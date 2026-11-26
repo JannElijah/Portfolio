@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EdgeOps — Reverse Proxy &amp; Container Health Stack</title>
+  <style>
+    :root { --bg: #08090f; --panel: #101320; --border: #1f263b; --violet: #8b5cf6; --cyan: #22d3ee; --ok: #10b981; --warn: #f59e0b; --bad: #f43f5e; --text: #f4f4f5; --muted: #94a3b8; }
+    * { box-sizing: border-box; font-family: Inter, system-ui, sans-serif; }
+    body { margin: 0; background: var(--bg); color: var(--text); padding: 24px 32px; }
+    .top { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 14px; margin-bottom: 20px; }
+    h1 { margin: 0; font-size: 1.35rem; letter-spacing: -0.02em; }
+    .sub { color: var(--muted); font-size: 0.82rem; margin-top: 2px; }
+    .actions { display: flex; gap: 8px; }
+    button { background: var(--violet); color: #fff; border: 0; padding: 8px 13px; border-radius: 6px; font-weight: 600; font-size: 0.78rem; cursor: pointer; }
+    button.sec { background: #161b2e; border: 1px solid #2b3556; color: var(--cyan); }
+    .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 18px; }
+    .kpi { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; }
+    .lbl { font-size: 0.7rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+    .val { font-size: 1.45rem; font-weight: 700; margin-top: 5px; font-family: ui-monospace, monospace; }
+    .grid { display: grid; grid-template-columns: 1.15fr 0.85fr; gap: 18px; }
+    .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 16px; }
+    .panel h2 { margin: 0 0 12px; font-size: 0.95rem; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+    th { text-align: left; color: var(--muted); font-size: 0.7rem; text-transform: uppercase; border-bottom: 1px solid var(--border); padding: 6px 8px; }
+    td { border-bottom: 1px solid #171d31; padding: 8px; }
+    .mono { font-family: ui-monospace, monospace; }
+    .up { color: var(--ok); font-weight: 700; }
+    .down { color: var(--bad); font-weight: 700; }
+    .chk { display: flex; justify-content: space-between; align-items: center; padding: 7px 0; border-bottom: 1px solid #171d31; font-size: 0.8rem; }
+    .chk:last-child { border-bottom: 0; }
+  </style>
+</head>
+<body>
+  <div class="top">
+    <div>
+      <h1>EdgeOps — Nginx Reverse Proxy &amp; Service Health Stack</h1>
+      <div class="sub">Containerized API Gateway · Rate Limiting (limit_req) · Security Headers · Upstream Probes</div>
+    </div>
+    <div class="actions">
+      <button class="sec" onclick="hitProxy('auth-api')">Route /proxy/auth-api</button>
+      <button class="sec" style="color:#fbbf24;" onclick="simulateBurst()">Simulate Burst (429)</button>
+      <button onclick="loadOverview()">Refresh Health Probes</button>
+    </div>
+  </div>
+
+  <div class="kpis" id="kpis"></div>
+
+  <div class="grid">
+    <div class="panel">
+      <h2>Upstream Container Targets</h2>
+      <table>
+        <thead><tr><th>Service</th><th>Target Endpoint</th><th>Status</th><th>Code</th><th>RTT</th></tr></thead>
+        <tbody id="upstreamsBody"></tbody>
+      </table>
+
+      <h2 style="margin-top:18px;">Recent Proxy Access Stream</h2>
+      <table>
+        <thead><tr><th>UTC</th><th>Route</th><th>Upstream</th><th>HTTP</th><th>Latency</th></tr></thead>
+        <tbody id="accessBody"></tbody>
+      </table>
+    </div>
+
+    <div class="panel">
+      <h2>Nginx Config &amp; Hardening Audit (nginx/edgeops.conf)</h2>
+      <div id="auditList"></div>
+    </div>
+  </div>
+
+<script>
+async function hitProxy(svc) {
+  await fetch('/proxy/' + svc);
+  await loadOverview();
+}
+async function simulateBurst() {
+  await fetch('/api/simulate-burst', { method: 'POST' });
+  await loadOverview();
+}
+async function loadOverview() {
+  const res = await fetch('/api/overview');
+  const data = await res.json();
+  const m = data.metrics;
+  const ups = data.upstreams;
+  const upCount = ups.filter(u => u.healthy).length;
+
+  document.getElementById('kpis').innerHTML = `
+    <div class="kpi"><div class="lbl">Upstream Mesh</div><div class="val" style="color:var(--ok);">${upCount}/${ups.length} UP</div></div>
+    <div class="kpi"><div class="lbl">Proxy P50 / P95 RTT</div><div class="val" style="color:var(--cyan);">${m.p50_ms} / ${m.p95_ms} ms</div></div>
+    <div class="kpi"><div class="lbl">Routed / 429 Throttled</div><div class="val">${m.total_requests} <span style="font-size:1rem;color:#fbbf24;">(${m.rate_limited_429})</span></div></div>
+    <div class="kpi"><div class="lbl">Nginx Audit</div><div class="val" style="color:var(--violet);">${data.nginx_audit.compliant ? 'HARDENED' : 'WARN'}</div></div>
+  `;
+
+  document.getElementById('upstreamsBody').innerHTML = ups.map(u => `
+    <tr>
+      <td class="mono" style="color:var(--cyan);">${u.service}</td>
+      <td class="mono">${u.url}</td>
+      <td class="${u.healthy ? 'up' : 'down'}">${u.status}</td>
+      <td class="mono">${u.http_code}</td>
+      <td class="mono">${u.latency_ms} ms</td>
+    </tr>
+  `).join('');
+
+  document.getElementById('accessBody').innerHTML = m.recent_access.slice(0, 5).map(a => `
+    <tr>
+      <td class="mono">${a.time_utc}</td>
+      <td class="mono">${a.path}</td>
+      <td class="mono">${a.upstream}</td>
+      <td class="mono" style="color:${a.status < 400 ? '#34d399' : '#fb7185'};">${a.status}</td>
+      <td class="mono">${a.latency_ms} ms</td>
+    </tr>
+  `).join('');
+
+  document.getElementById('auditList').innerHTML = data.nginx_audit.audit_checks.map(c => `
+    <div class="chk">
+      <span>${c.check}</span>
+      <span class="mono ${c.passed ? 'up' : 'down'}">${c.passed ? 'PASS' : 'FAIL'}</span>
+    </div>
+  `).join('');
+}
+loadOverview();
+</script>
+</body>
+</html>

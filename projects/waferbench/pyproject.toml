@@ -1,0 +1,9 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "waferbench"
+version = "0.1.0"
+description = "Unified semiconductor MCU bench telemetry and QA release gate dashboard"
+requires-python = ">=3.11"

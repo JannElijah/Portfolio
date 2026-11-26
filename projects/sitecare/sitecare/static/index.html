@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SiteCare — Website Maintenance &amp; GitHub Release Health</title>
+  <style>
+    :root { --bg:#08100d; --panel:#0e1915; --border:#1b3329; --emerald:#10b981; --cyan:#2dd4bf; --fail:#f43f5e; --text:#f4f4f5; --muted:#9ca3af; }
+    * { box-sizing:border-box; font-family:Inter,system-ui,sans-serif; }
+    body { margin:0; background:var(--bg); color:var(--text); padding:20px 28px; }
+    .top { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; border-bottom:1px solid var(--border); padding-bottom:12px; margin-bottom:16px; }
+    h1 { margin:0; font-size:1.3rem; }
+    .sub { color:var(--muted); font-size:0.8rem; margin-top:2px; }
+    .kpis { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:16px; }
+    .kpi { background:var(--panel); border:1px solid var(--border); border-top:2px solid var(--emerald); border-radius:8px; padding:12px 14px; }
+    .lbl { font-size:0.68rem; color:var(--muted); text-transform:uppercase; }
+    .val { font-size:1.4rem; font-weight:700; margin-top:4px; font-family:ui-monospace,monospace; }
+    .grid { display:grid; grid-template-columns:1.15fr 0.85fr; gap:16px; }
+    .panel { background:var(--panel); border:1px solid var(--border); border-radius:10px; padding:15px; min-width:0; }
+    .panel h2 { margin:0 0 10px; font-size:0.95rem; }
+    .chk { display:flex; justify-content:space-between; align-items:center; gap:12px; padding:8px 0; border-bottom:1px solid #162a21; font-size:0.8rem; }
+    .chk:last-child { border-bottom:0; }
+    .pass { color:var(--emerald); font-family:monospace; font-weight:700; }
+    .fail { color:var(--fail); font-family:monospace; font-weight:700; }
+    pre { margin:0; padding:10px; background:#060c0a; border:1px solid var(--border); border-radius:6px; font-size:0.72rem; color:#a7f3d0; white-space:pre-wrap; word-break:break-word; overflow-x:auto; }
+    button { background:var(--emerald); color:#022c22; border:0; padding:7px 13px; border-radius:6px; font-weight:700; font-size:0.78rem; cursor:pointer; }
+  </style>
+</head>
+<body>
+  <div class="top">
+    <div>
+      <h1>SiteCare — Website Maintenance &amp; GitHub Release Health</h1>
+      <div class="sub">SEO/OG Verification · Broken-Asset Scanner · Sitemap XML · GitHub Workflows Status</div>
+    </div>
+    <button onclick="runAudit()">Re-Run Maintenance Scan</button>
+  </div>
+
+  <div class="kpis" id="kpis"></div>
+
+  <div class="grid">
+    <div class="panel">
+      <h2>Production Build Audit Checks</h2>
+      <div id="checksList"></div>
+    </div>
+    <div class="panel">
+      <h2>GitHub CI &amp; Version Control</h2>
+      <div id="ciMeta" style="font-size:0.8rem;color:#cbd5e1;margin-bottom:10px;"></div>
+      <div style="font-size:0.72rem;color:var(--muted);text-transform:uppercase;margin-bottom:6px;">Generated Sitemap XML Preview</div>
+      <pre id="sitemapBox"></pre>
+    </div>
+  </div>
+
+<script>
+const esc = (s) => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+async function runAudit() {
+  const res = await fetch('/api/audit');
+  const { audit, git_ci: git, sitemap_xml: xml } = await res.json();
+
+  document.getElementById('kpis').innerHTML = `
+    <div class="kpi"><div class="lbl">Site Health Score</div><div class="val" style="color:var(--emerald);">${audit.health_score}%</div></div>
+    <div class="kpi"><div class="lbl">Verified Assets</div><div class="val" style="color:var(--cyan);">${audit.verified_assets.length}</div></div>
+    <div class="kpi"><div class="lbl">Broken Refs</div><div class="val" style="color:${audit.broken_assets.length ? '#fb7185' : '#34d399'};">${audit.broken_assets.length}</div></div>
+    <div class="kpi"><div class="lbl">GitHub Workflows</div><div class="val">${git.workflow_files.length} YAML</div></div>
+  `;
+
+  document.getElementById('checksList').innerHTML = audit.checks.map(c => `
+    <div class="chk">
+      <div><strong>${esc(c.check)}</strong><div style="font-size:0.72rem;color:var(--muted);">${esc(c.detail)}</div></div>
+      <span class="${c.passed ? 'pass' : 'fail'}">${c.passed ? 'PASS' : 'FAIL'}</span>
+    </div>
+  `).join('');
+
+  document.getElementById('ciMeta').innerHTML = `
+    <div>Branch: <code style="color:#6ee7b7;">${esc(git.branch)}</code> · CI Active: <strong>${git.ci_configured ? 'Yes' : 'No'}</strong></div>
+    <div style="margin-top:4px;">Workflows: <code>${esc(git.workflow_files.join(', ') || 'none')}</code></div>
+  `;
+  document.getElementById('sitemapBox').textContent = xml.slice(0, 420);
+}
+runAudit();
+</script>
+</body>
+</html>

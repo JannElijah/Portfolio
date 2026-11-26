@@ -1,0 +1,12 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "authgate"
+version = "0.1.0"
+description = "Zero-dependency PBKDF2, HS256 JWT rotation, RBAC, and audit trail REST API"
+requires-python = ">=3.11"
+
+[project.scripts]
+authgate = "authgate.app:main"

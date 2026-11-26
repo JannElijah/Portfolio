@@ -1,0 +1,12 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "logpulse"
+version = "0.1.0"
+description = "Windows Event Log and Auto-start service watchdog with SQLite triage history"
+requires-python = ">=3.11"
+
+[project.scripts]
+logpulse = "logpulse.cli:main"

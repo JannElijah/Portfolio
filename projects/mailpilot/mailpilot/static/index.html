@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MailPilot AI — Email Triage &amp; Reply Automation</title>
+  <style>
+    :root { --bg:#090b14; --panel:#111526; --border:#232b47; --indigo:#6366f1; --sky:#38bdf8; --ok:#10b981; --p1:#f43f5e; --p2:#f59e0b; --text:#f4f4f5; --muted:#94a3b8; }
+    * { box-sizing:border-box; font-family:Inter,system-ui,sans-serif; }
+    body { margin:0; background:var(--bg); color:var(--text); padding:20px 28px; }
+    .top { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; border-bottom:1px solid var(--border); padding-bottom:12px; margin-bottom:16px; }
+    h1 { margin:0; font-size:1.3rem; }
+    .sub { color:var(--muted); font-size:0.8rem; margin-top:2px; }
+    .kpis { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:16px; }
+    .kpi { background:var(--panel); border:1px solid var(--border); border-radius:9px; padding:12px 14px; }
+    .lbl { font-size:0.68rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.05em; }
+    .val { font-size:1.35rem; font-weight:700; margin-top:4px; font-family:ui-monospace,monospace; }
+    .grid { display:grid; grid-template-columns:0.95fr 1.05fr; gap:16px; }
+    .panel { background:var(--panel); border:1px solid var(--border); border-radius:10px; padding:15px; }
+    .mail-item { border:1px solid var(--border); background:#0c101e; border-radius:8px; padding:10px 12px; margin-bottom:8px; cursor:pointer; }
+    .mail-item.active { border-color:var(--sky); background:#131a30; }
+    .pill { display:inline-block; padding:2px 7px; border-radius:999px; font-family:monospace; font-size:0.68rem; font-weight:700; }
+    .P1 { background:rgba(244,63,94,0.16); color:#fb7185; }
+    .P2 { background:rgba(245,158,11,0.16); color:#fbbf24; }
+    .P3 { background:rgba(56,189,248,0.16); color:#7dd3fc; }
+    textarea { width:100%; min-height:140px; background:#090c17; color:var(--text); border:1px solid var(--border); border-radius:8px; padding:10px; font-size:0.82rem; line-height:1.45; }
+    button { background:var(--indigo); color:#fff; border:0; padding:8px 13px; border-radius:6px; font-weight:600; font-size:0.78rem; cursor:pointer; }
+    button.sec { background:#181e36; border:1px solid var(--border); color:var(--sky); }
+    button.ok { background:#065f46; border:1px solid var(--ok); }
+    ul { margin:6px 0 12px 18px; padding:0; font-size:0.8rem; color:#cbd5e1; }
+  </style>
+</head>
+<body>
+  <div class="top">
+    <div>
+      <h1>MailPilot AI — Email Client &amp; Draft Automation</h1>
+      <div class="sub">IMAP/SMTP TLS Config · Gemini / NLP Intent Classifier · Human-in-the-Loop Outbox</div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <span class="pill" style="background:rgba(16,185,129,0.15);color:#34d399;border:1px solid rgba(16,185,129,0.4);">IMAPS:993 · STARTTLS:587 OK</span>
+      <button class="sec" onclick="simulateEmail()">+ Ingest Sample Email</button>
+    </div>
+  </div>
+
+  <div class="kpis" id="kpis"></div>
+
+  <div class="grid">
+    <div class="panel">
+      <h2 style="margin:0 0 10px;font-size:0.95rem;">Prioritized AI Triage Queue</h2>
+      <div id="inboxList"></div>
+    </div>
+    <div class="panel" id="detailPanel"></div>
+  </div>
+
+<script>
+let emails = [];
+let selectedId = null;
+
+async function refresh() {
+  const res = await fetch('/api/emails');
+  const data = await res.json();
+  emails = data.emails;
+  if (!selectedId && emails.length) selectedId = emails[0].id;
+
+  const p1Count = emails.filter(e => e.priority === 'P1').length;
+  const pendingCount = emails.filter(e => e.status === 'PENDING_REVIEW').length;
+  document.getElementById('kpis').innerHTML = `
+    <div class="kpi"><div class="lbl">Triaged Inbox</div><div class="val">${emails.length}</div></div>
+    <div class="kpi"><div class="lbl">Urgent (P1)</div><div class="val" style="color:#fb7185;">${p1Count}</div></div>
+    <div class="kpi"><div class="lbl">Pending Review</div><div class="val" style="color:#38bdf8;">${pendingCount}</div></div>
+    <div class="kpi"><div class="lbl">Sent via Outbox</div><div class="val" style="color:#34d399;">${data.outbox_sent}</div></div>
+  `;
+
+  document.getElementById('inboxList').innerHTML = emails.map(e => `
+    <div class="mail-item ${e.id === selectedId ? 'active' : ''}" onclick="selectEmail(${e.id})">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+        <span class="pill ${e.priority}">${e.priority} · ${e.category}</span>
+        <span style="font-family:monospace;font-size:0.7rem;color:${e.status === 'SENT' ? '#34d399' : '#94a3b8'};">${e.status}</span>
+      </div>
+      <div style="font-weight:600;font-size:0.86rem;">${e.subject}</div>
+      <div style="font-size:0.74rem;color:var(--muted);margin-top:2px;">From ${e.sender} · Confidence ${(e.confidence * 100).toFixed(0)}%</div>
+    </div>
+  `).join('');
+
+  renderDetail();
+}
+
+function selectEmail(id) {
+  selectedId = id;
+  refresh();
+}
+
+function renderDetail() {
+  const e = emails.find(x => x.id === selectedId) || emails[0];
+  if (!e) return;
+  document.getElementById('detailPanel').innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border);padding-bottom:8px;">
+      <strong style="font-size:0.95rem;">${e.subject}</strong>
+      <span style="font-family:monospace;font-size:0.72rem;color:#818cf8;">${e.engine}</span>
+    </div>
+    <p style="font-size:0.8rem;color:#cbd5e1;line-height:1.45;margin:10px 0;">${e.body}</p>
+    <div style="font-size:0.72rem;color:var(--muted);text-transform:uppercase;">Extracted Action Items</div>
+    <ul>${e.action_items.map(a => `<li>${a}</li>`).join('')}</ul>
+    <div style="font-size:0.72rem;color:var(--muted);text-transform:uppercase;margin-bottom:6px;">AI Generated Reply Draft</div>
+    <textarea id="replyBox">${e.draft_reply}</textarea>
+    <div style="margin-top:10px;display:flex;justify-content:flex-end;">
+      <button class="ok" onclick="approveSend(${e.id})">Approve &amp; Queue to Outbox</button>
+    </div>
+  `;
+}
+
+async function approveSend(id) {
+  const draft_reply = document.getElementById('replyBox').value;
+  await fetch('/api/emails/' + id + '/approve', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({draft_reply})
+  });
+  await refresh();
+}
+
+async function simulateEmail() {
+  await fetch('/api/emails/ingest', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({
+      sender: 'client-lead@makati-corp.ph',
+      subject: 'Urgent: Website SSL warning on production landing page',
+      body: 'Users report an SSL timeout error on our main marketing domain.'
+    })
+  });
+  selectedId = null;
+  await refresh();
+}
+
+refresh();
+</script>
+</body>
+</html>

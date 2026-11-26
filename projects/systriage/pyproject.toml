@@ -1,0 +1,12 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "systriage"
+version = "0.1.0"
+description = "Endpoint diagnostics, TCP/DNS probing, and SQLite helpdesk triage CLI"
+requires-python = ">=3.11"
+
+[project.scripts]
+systriage = "systriage.cli:main"

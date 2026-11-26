@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>UPHSD DMS — Institutional Document Workflow</title>
+  <style>
+    :root { --bg: #0f0d12; --card: #18141e; --border: #2c2438; --accent: #e11d48; --ok: #10b981; --warn: #f59e0b; --text: #f4f4f5; --muted: #a1a1aa; }
+    * { box-sizing: border-box; font-family: Inter, system-ui, sans-serif; }
+    body { margin: 0; background: var(--bg); color: var(--text); padding: 20px 28px; }
+    .top { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 12px; margin-bottom: 14px; }
+    h1 { margin: 0; font-size: 1.3rem; }
+    .sub { color: var(--muted); font-size: 0.8rem; margin-top: 2px; }
+    .toolbar { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+    .pill { background: #1a1522; border: 1px solid var(--border); color: var(--muted); padding: 5px 11px; border-radius: 999px; font-size: 0.75rem; cursor: pointer; }
+    .pill.active { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+    .grid { display: grid; grid-template-columns: 280px 1fr; gap: 18px; }
+    .panel { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 14px; }
+    label { display: block; font-size: 0.74rem; color: var(--muted); margin: 9px 0 4px; }
+    input, select { width: 100%; background: #0b090d; border: 1px solid var(--border); color: var(--text); padding: 7px 10px; border-radius: 6px; font-size: 0.82rem; }
+    button { background: var(--accent); color: #fff; border: 0; padding: 6px 10px; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 0.74rem; }
+    button.sec { background: #241e2e; border: 1px solid #3c314e; }
+    button.ok { background: #065f46; border: 1px solid #10b981; }
+    button.warn { background: #78350f; border: 1px solid #f59e0b; color: #fde68a; }
+    .cols { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+    .col h3 { font-size: 0.78rem; margin: 0 0 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
+    .doc { background: #0f0d14; border: 1px solid var(--border); border-radius: 8px; padding: 10px; margin-bottom: 9px; }
+    .ref { font-family: monospace; font-size: 0.7rem; color: #fda4af; }
+    .doc-title { font-weight: 600; font-size: 0.85rem; margin: 4px 0; }
+    .meta { font-size: 0.72rem; color: var(--muted); }
+    .actions { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
+    .modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,0.75); display: none; align-items: center; justify-content: center; padding: 20px; }
+    .modal-bg.open { display: flex; }
+    .modal { width: 100%; max-width: 520px; background: var(--card); border: 1px solid #4c3a63; border-radius: 10px; padding: 18px; }
+    .audit-item { border-left: 2px solid var(--accent); padding-left: 10px; margin: 10px 0; font-size: 0.78rem; }
+  </style>
+</head>
+<body>
+  <div class="top">
+    <div>
+      <h1>UPHSD Document Management System</h1>
+      <div class="sub">Role-Based Institutional Routing, Return Remarks &amp; Immutable Audit Pipeline</div>
+    </div>
+    <div>
+      <label style="display:inline;margin-right:8px;">Active Role:</label>
+      <select id="roleSelect" style="width:auto;display:inline-block;">
+        <option value="DEAN">Dean / Reviewer</option>
+        <option value="STAFF">Staff / Student</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="toolbar" id="deptFilter">
+    <span style="font-size:0.75rem;color:var(--muted);">Department Filter:</span>
+    <button class="pill active" onclick="setDept('', this)">All</button>
+    <button class="pill" onclick="setDept('CCS', this)">CCS</button>
+    <button class="pill" onclick="setDept('Registrar', this)">Registrar</button>
+    <button class="pill" onclick="setDept('IT Lab', this)">IT Lab</button>
+    <button class="pill" onclick="setDept('Accounting', this)">Accounting</button>
+  </div>
+
+  <div class="grid">
+    <div class="panel">
+      <h2 style="margin:0 0 6px;font-size:0.95rem;">Submit Document</h2>
+      <label>Title</label>
+      <input id="titleInput" placeholder="e.g. OJT Memorandum Request" />
+      <label>Department</label>
+      <select id="deptInput">
+        <option>CCS</option><option>Registrar</option><option>IT Lab</option><option>Accounting</option>
+      </select>
+      <label>Submitted By</label>
+      <input id="userInput" value="Jann Limpiado" />
+      <button onclick="submitDoc()" style="margin-top:12px;width:100%;padding:8px;">Submit to Queue</button>
+      <div id="msg" style="font-size:0.75rem;margin-top:10px;color:#fda4af;"></div>
+    </div>
+    <div class="cols" id="board"></div>
+  </div>
+
+  <div id="auditModal" class="modal-bg" onclick="closeAudit()">
+    <div class="modal" onclick="event.stopPropagation()">
+      <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border);padding-bottom:8px;">
+        <strong id="auditTitle">Audit Trail</strong>
+        <button class="sec" onclick="closeAudit()">Close</button>
+      </div>
+      <div id="auditBody" style="margin-top:10px;"></div>
+    </div>
+  </div>
+
+<script>
+let activeDept = '';
+function setDept(dept, el) {
+  activeDept = dept;
+  document.querySelectorAll('#deptFilter .pill').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  loadBoard();
+}
+async function loadBoard() {
+  const qs = activeDept ? ('?department=' + encodeURIComponent(activeDept)) : '';
+  const res = await fetch('/api/documents' + qs);
+  const { documents } = await res.json();
+  const stages = [
+    { key: 'SUBMITTED', label: 'Submitted' },
+    { key: 'IN_REVIEW', label: 'In Review' },
+    { key: 'APPROVED', label: 'Approved' },
+    { key: 'RETURNED', label: 'Returned' },
+  ];
+  document.getElementById('board').innerHTML = stages.map(st => {
+    const items = documents.filter(d => d.status === st.key);
+    return `<div class="panel col"><h3>${st.label} (${items.length})</h3>` + items.map(d => `
+      <div class="doc">
+        <div class="ref">${d.ref_code} · ${d.department}</div>
+        <div class="doc-title">${d.title}</div>
+        <div class="meta">By ${d.submitted_by}${d.remarks ? ' · ' + d.remarks : ''}</div>
+        <div class="actions">
+          ${d.status === 'SUBMITTED' ? `<button class="sec" onclick="move(${d.id}, 'IN_REVIEW')">Review</button>` : ''}
+          ${(d.status === 'SUBMITTED' || d.status === 'IN_REVIEW') ? `<button class="ok" onclick="move(${d.id}, 'APPROVED')">Approve</button>` : ''}
+          ${d.status === 'IN_REVIEW' ? `<button class="warn" onclick="move(${d.id}, 'RETURNED', 'Needs revisions')">Return</button>` : ''}
+          <button class="sec" onclick="inspectAudit(${d.id})">Audit</button>
+        </div>
+      </div>`).join('') + `</div>`;
+  }).join('');
+}
+async function submitDoc() {
+  const title = document.getElementById('titleInput').value;
+  const department = document.getElementById('deptInput').value;
+  const submitted_by = document.getElementById('userInput').value;
+  const res = await fetch('/api/documents', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({title, department, submitted_by}) });
+  if (res.ok) { document.getElementById('titleInput').value = ''; loadBoard(); }
+}
+async function move(id, to_status, note = '') {
+  const role = document.getElementById('roleSelect').value;
+  const res = await fetch('/api/documents/' + id + '/transition', { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify({to_status, role, actor: role, note}) });
+  const data = await res.json();
+  document.getElementById('msg').textContent = res.ok ? '' : data.error;
+  loadBoard();
+}
+async function inspectAudit(id) {
+  const res = await fetch('/api/documents/' + id);
+  const { document: doc } = await res.json();
+  document.getElementById('auditTitle').textContent = doc.ref_code + ' · ' + doc.title;
+  const trail = doc.audit_trail && doc.audit_trail.length ? doc.audit_trail : [{actor: doc.submitted_by, role: 'SYSTEM', to_status: doc.status, note: doc.remarks || 'Initial seeded record', created_at: doc.updated_at}];
+  document.getElementById('auditBody').innerHTML = trail.map(a => `
+    <div class="audit-item">
+      <div><strong>${a.actor}</strong> (${a.role}) → <span style="color:#fda4af;">${a.to_status}</span></div>
+      <div style="color:var(--muted);">${a.note || ''} · ${String(a.created_at).slice(0,19).replace('T',' ')}</div>
+    </div>
+  `).join('');
+  document.getElementById('auditModal').classList.add('open');
+}
+function closeAudit() { document.getElementById('auditModal').classList.remove('open'); }
+loadBoard();
+</script>
+</body>
+</html>
