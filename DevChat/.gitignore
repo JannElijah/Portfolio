@@ -1,0 +1,14 @@
+# Python System Files
+__pycache__/
+*.py[cod]
+venv/
+.venv/
+
+# Database & Logs (DO NOT UPLOAD THESE)
+*.csv
+*.db
+chat_history.csv
+devchat.db
+
+# OS Files
+.DS_Store
