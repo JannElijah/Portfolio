@@ -1,0 +1,40 @@
+# Dependencies & Build Outputs
+node_modules/
+dist/
+.vite/
+
+# Python Virtual Environments & Caches
+venv/
+.venv/
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+*.egg-info/
+
+# Coverage, Test & Generated Reports
+.coverage
+coverage/
+htmlcov/
+test-results/
+playwright-report/
+*.log
+*.db
+*.sqlite
+*.sqlite3
+chat_history.csv
+systriage_report.json
+qa_signoff_report.html
+workstation_audit.json
+
+# Secrets, Environment & Private Drafts
+.env
+.env.*
+!.env.example
+**/.streamlit/secrets.toml
+docs/*_Cover_Letter.md
+
+# OS / IDE Junk
+.DS_Store
+Thumbs.db
+.idea/
