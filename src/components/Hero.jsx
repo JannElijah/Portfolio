@@ -25,12 +25,21 @@ export default function Hero() {
   };
 
   return (
-    <section id="about" className="border-b border-zinc-800/80 bg-[#09090B]">
-      <div className="mx-auto max-w-6xl px-5 py-16 sm:px-8 sm:py-24">
+    <section id="about" className="relative overflow-hidden border-b border-zinc-800/80 bg-[#09090B]">
+      <div
+        aria-hidden="true"
+        className="bg-grid-subtle pointer-events-none absolute inset-0 opacity-45 [mask-image:radial-gradient(ellipse_at_center,black_25%,transparent_75%)]"
+      />
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-x-0 -top-24 mx-auto h-72 max-w-3xl rounded-full bg-indigo-500/10 blur-3xl"
+      />
+
+      <div className="relative mx-auto max-w-6xl px-5 py-16 sm:px-8 sm:py-24">
         <div className="grid grid-cols-1 gap-12 lg:grid-cols-12 lg:items-end">
           {/* Left 8 Columns: Name, Role & Primary Actions */}
           <div className="lg:col-span-8">
-            <div className="flex items-center gap-4">
+            <div className="animate-fade-up flex items-center gap-4">
               {hasAvatar && (
                 <img
                   src={profileData.avatarUrl}
@@ -38,32 +47,50 @@ export default function Hero() {
                   className="h-14 w-14 rounded-full border border-zinc-700 object-cover"
                 />
               )}
-              <div className="inline-flex items-center gap-2 text-xs font-medium text-emerald-400">
-                <span className="h-2 w-2 rounded-full bg-emerald-400" aria-hidden="true" />
+              <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/25 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-400">
+                <span className="relative flex h-2 w-2" aria-hidden="true">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400" />
+                </span>
                 <span>{profileData.availability}</span>
               </div>
             </div>
 
-            <h1 className="mt-4 text-4xl font-bold tracking-tight text-white sm:text-5xl lg:text-[3.5rem] lg:leading-[1.08]">
+            <h1
+              style={{ animationDelay: '70ms' }}
+              className="animate-fade-up mt-4 text-4xl font-bold tracking-tight text-white sm:text-5xl lg:text-[3.5rem] lg:leading-[1.08]"
+            >
               {profileData.fullName}
             </h1>
 
-            <p className="mt-3 text-lg font-medium text-zinc-300 sm:text-2xl">
+            <p
+              style={{ animationDelay: '130ms' }}
+              className="animate-fade-up mt-3 text-lg font-medium text-zinc-300 sm:text-2xl"
+            >
               {profileData.headline}
             </p>
 
-            <p className="mt-5 max-w-2xl text-base leading-relaxed text-zinc-400">
+            <p
+              style={{ animationDelay: '190ms' }}
+              className="animate-fade-up mt-5 max-w-2xl text-base leading-relaxed text-zinc-400"
+            >
               {profileData.subheadline}
             </p>
 
-            <p className="mt-3 inline-flex items-center gap-1.5 text-sm text-zinc-400">
+            <p
+              style={{ animationDelay: '240ms' }}
+              className="animate-fade-up mt-3 inline-flex items-center gap-1.5 text-sm text-zinc-400"
+            >
               <MapPin className="h-4 w-4 text-zinc-400" aria-hidden="true" />
               <span>
                 {profileData.location} · {profileData.workPreference}
               </span>
             </p>
 
-            <div className="mt-8 flex flex-wrap items-center gap-2.5">
+            <div
+              style={{ animationDelay: '290ms' }}
+              className="animate-fade-up mt-8 flex flex-wrap items-center gap-2.5"
+            >
               <ResumeMenu
                 variant="primary"
                 onPlaceholderSelect={(track) => setPendingTrack(track)}
@@ -147,14 +174,20 @@ export default function Hero() {
           </div>
 
           {/* Right 4 Columns: Clean Editorial Ledger */}
-          <div className="border-t border-zinc-800 pt-6 lg:col-span-4 lg:border-t-0 lg:border-l lg:pt-0 lg:pl-8">
-            <dl className="grid grid-cols-2 gap-x-6 gap-y-5 lg:grid-cols-1 lg:gap-y-4">
+          <div
+            style={{ animationDelay: '180ms' }}
+            className="animate-fade-up lg:col-span-4"
+          >
+            <dl className="grid grid-cols-2 gap-3 lg:grid-cols-1">
               {profileData.highlights.map((item) => (
-                <div key={item.label} className="border-b border-zinc-800/70 pb-3 last:border-b-0 last:pb-0">
-                  <dt className="text-[11px] font-medium uppercase tracking-wider text-zinc-500">
+                <div
+                  key={item.label}
+                  className="rounded-lg border border-zinc-800/90 bg-[#111114]/90 px-4 py-3 transition-colors duration-200 hover:border-zinc-700"
+                >
+                  <dt className="font-mono text-[10px] font-medium uppercase tracking-widest text-zinc-500">
                     {item.label}
                   </dt>
-                  <dd className="mt-1 text-lg font-semibold tracking-tight text-white">
+                  <dd className="mt-1 text-base font-semibold tracking-tight text-white sm:text-lg">
                     {item.value}{' '}
                     <span className="block text-xs font-normal text-zinc-400">{item.detail}</span>
                   </dd>

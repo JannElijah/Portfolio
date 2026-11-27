@@ -1,9 +1,10 @@
 import { ExternalLink } from 'lucide-react';
 import { credentialsColumns } from '../data/portfolioData';
+import Reveal from './Reveal';
 
 function CredentialCard({ column, twoColItems = false }) {
   return (
-    <div className="rounded-xl border border-zinc-800 bg-[#121215] p-6">
+    <div className="rounded-xl border border-zinc-800 bg-[#121215] p-6 transition-colors duration-200 hover:border-zinc-700">
       <h3 className="border-b border-zinc-800 pb-4 text-base font-semibold text-white">
         {column.title}
       </h3>
@@ -40,7 +41,7 @@ function CredentialCard({ column, twoColItems = false }) {
 }
 
 /**
- * Balanced asymmetric Credentials & Education layout avoiding vertical empty voids.
+ * Balanced asymmetric Credentials & Education layout with staggered scroll reveals.
  */
 export default function Credentials() {
   const certColumn = credentialsColumns.find((c) => c.id === 'certification');
@@ -49,25 +50,30 @@ export default function Credentials() {
   return (
     <section id="credentials" className="border-b border-zinc-800/80 bg-[#0D0D10] py-20 sm:py-24">
       <div className="mx-auto max-w-6xl px-5 sm:px-8">
-        <div className="max-w-xl">
-          <h2 className="text-2xl font-bold tracking-tight text-white sm:text-3xl">
+        <Reveal className="max-w-xl">
+          <p className="font-mono text-[11px] uppercase tracking-widest text-zinc-500">
+            04 · Verified Credentials
+          </p>
+          <h2 className="mt-2 text-2xl font-bold tracking-tight text-white sm:text-3xl">
             Credentials &amp; Education
           </h2>
           <p className="mt-2 text-sm text-zinc-400 sm:text-base">
             Verified technical certifications, seminars, and academic standing.
           </p>
-        </div>
+        </Reveal>
 
         <div className="mt-10 grid grid-cols-1 gap-6 lg:grid-cols-12 lg:items-start">
           {certColumn && (
-            <div className="lg:col-span-6">
+            <Reveal delay={40} className="lg:col-span-6">
               <CredentialCard column={certColumn} />
-            </div>
+            </Reveal>
           )}
 
           <div className="space-y-6 lg:col-span-6">
-            {sideColumns.map((column) => (
-              <CredentialCard key={column.id} column={column} />
+            {sideColumns.map((column, idx) => (
+              <Reveal key={column.id} delay={(idx + 1) * 90}>
+                <CredentialCard column={column} />
+              </Reveal>
             ))}
           </div>
         </div>

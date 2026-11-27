@@ -1192,7 +1192,7 @@ export default function LiveDemoModal({ project, onClose }) {
       onClick={onClose}
     >
       <div
-        className="w-full max-w-3xl rounded-xl border border-sky-400/40 bg-[#0B1120] p-6 shadow-2xl"
+        className="animate-modal-in w-full max-w-3xl rounded-xl border border-sky-400/40 bg-[#0B1120] p-6 shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-start justify-between gap-4 border-b border-slate-800 pb-4">

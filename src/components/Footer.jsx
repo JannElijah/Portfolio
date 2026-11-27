@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { isConfiguredLink, profileData } from '../data/portfolioData';
 import ResumeMenu from './ResumeMenu';
+import Reveal from './Reveal';
 
 /**
  * Clean editorial Footer CTA & contact bar with quick OJT inquiry builder.
@@ -63,7 +64,7 @@ export default function Footer() {
   return (
     <footer id="contact" className="bg-[#09090B] py-16">
       <div className="mx-auto max-w-6xl px-5 sm:px-8">
-        <div className="rounded-xl border border-zinc-800 bg-[#111114] p-7 sm:p-10">
+        <Reveal className="rounded-xl border border-zinc-800 bg-[#111114] p-7 transition-colors duration-200 hover:border-zinc-700 sm:p-10">
           <div className="flex flex-col justify-between gap-8 lg:flex-row lg:items-center">
             <div className="max-w-md">
               <h2 className="text-2xl font-bold tracking-tight text-white sm:text-3xl">
@@ -167,7 +168,7 @@ export default function Footer() {
           </div>
 
           {inquiryOpen && (
-            <div className="mt-6 border-t border-zinc-800 pt-6">
+            <div className="animate-modal-in mt-6 border-t border-zinc-800 pt-6">
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                 <label className="block text-xs">
                   <span className="text-zinc-400">Target Track</span>
@@ -233,7 +234,7 @@ export default function Footer() {
               </div>
             </div>
           )}
-        </div>
+        </Reveal>
 
         <p className="mt-8 text-center text-xs text-zinc-500">
           © {new Date().getFullYear()} {profileData.fullName}

@@ -8,6 +8,7 @@ import { navItems, profileData } from '../data/portfolioData';
 export default function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [activeId, setActiveId] = useState('about');
+  const [scrollProgress, setScrollProgress] = useState(0);
 
   useEffect(() => {
     const sections = navItems
@@ -22,11 +23,14 @@ export default function Navbar() {
     let frameId = null;
     const updateActive = () => {
       frameId = null;
+      const docEl = document.documentElement;
+      const scrollable = Math.max(1, docEl.scrollHeight - window.innerHeight);
+      setScrollProgress(Math.min(100, Math.max(0, (window.scrollY / scrollable) * 100)));
+
       if (window.scrollY < 40) {
         setActiveId(sections[0].id);
         return;
       }
-      const docEl = document.documentElement;
       if (
         docEl.scrollHeight > window.innerHeight &&
         window.innerHeight + window.scrollY >= docEl.scrollHeight - 24
@@ -84,11 +88,17 @@ export default function Navbar() {
               <a
                 key={item.href}
                 href={item.href}
-                className={`text-sm transition-colors ${
+                className={`relative py-1 text-sm transition-colors ${
                   isActive ? 'font-medium text-white' : 'text-zinc-400 hover:text-zinc-200'
                 }`}
               >
                 {item.label}
+                <span
+                  aria-hidden="true"
+                  className={`absolute inset-x-0 -bottom-0.5 h-[2px] rounded-full bg-zinc-100 transition-all duration-300 ${
+                    isActive ? 'scale-x-100 opacity-100' : 'scale-x-0 opacity-0'
+                  }`}
+                />
               </a>
             );
           })}
@@ -96,7 +106,7 @@ export default function Navbar() {
 
         <a
           href={`mailto:${profileData.email}`}
-          className="hidden rounded-md border border-zinc-700 bg-zinc-900 px-3.5 py-1.5 text-xs font-medium text-zinc-100 transition-colors hover:border-zinc-500 hover:bg-zinc-800 md:inline-flex"
+          className="hidden rounded-md border border-zinc-700 bg-zinc-900 px-3.5 py-1.5 text-xs font-medium text-zinc-100 transition-all duration-200 hover:-translate-y-0.5 hover:border-zinc-500 hover:bg-zinc-800 active:translate-y-0 md:inline-flex"
         >
           Get in Touch
         </a>
@@ -106,14 +116,21 @@ export default function Navbar() {
           onClick={() => setMobileOpen((prev) => !prev)}
           aria-expanded={mobileOpen}
           aria-label="Toggle navigation menu"
-          className="rounded-md border border-zinc-800 p-2 text-zinc-300 hover:text-white md:hidden"
+          className="rounded-md border border-zinc-800 p-2 text-zinc-300 transition-colors hover:text-white md:hidden"
         >
           {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
         </button>
       </div>
 
+      <div aria-hidden="true" className="h-[2px] w-full bg-zinc-900">
+        <div
+          className="h-full bg-gradient-to-r from-emerald-400 via-sky-400 to-indigo-400 transition-[width] duration-150 ease-out"
+          style={{ width: `${scrollProgress}%` }}
+        />
+      </div>
+
       {mobileOpen && (
-        <div className="border-t border-zinc-800 bg-[#09090B] px-5 py-4 md:hidden">
+        <div className="animate-modal-in border-t border-zinc-800 bg-[#09090B] px-5 py-4 md:hidden">
           <nav className="flex flex-col gap-2" aria-label="Mobile Navigation">
             {navItems.map((item) => (
               <a

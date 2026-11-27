@@ -23,6 +23,7 @@ import {
 } from '../data/portfolioData';
 import ProjectVisual from './ProjectVisuals';
 import LiveDemoModal from './LiveDemoModal';
+import Reveal from './Reveal';
 
 export function ProjectDetailsModal({ project, onClose }) {
   const [copiedCli, setCopiedCli] = useState(false);
@@ -61,7 +62,7 @@ export function ProjectDetailsModal({ project, onClose }) {
       onClick={onClose}
     >
       <div
-        className="w-full max-w-xl rounded-xl border border-zinc-700 bg-[#121215] p-6 shadow-2xl"
+        className="animate-modal-in w-full max-w-xl rounded-xl border border-zinc-700 bg-[#121215] p-6 shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-start justify-between gap-4 border-b border-zinc-800 pb-4">
@@ -77,7 +78,7 @@ export function ProjectDetailsModal({ project, onClose }) {
             type="button"
             onClick={onClose}
             aria-label="Close project details"
-            className="rounded-md border border-zinc-700 p-1.5 text-zinc-400 hover:text-white"
+            className="rounded-md border border-zinc-700 p-1.5 text-zinc-400 transition-colors hover:text-white"
           >
             <X className="h-4 w-4" />
           </button>
@@ -112,7 +113,7 @@ export function ProjectDetailsModal({ project, onClose }) {
                 <button
                   type="button"
                   onClick={handleCopyCli}
-                  className="inline-flex items-center gap-1 rounded border border-zinc-800 px-2 py-0.5 text-[10px] text-zinc-300 hover:border-zinc-600 hover:text-white"
+                  className="inline-flex items-center gap-1 rounded border border-zinc-800 px-2 py-0.5 text-[10px] text-zinc-300 transition-colors hover:border-zinc-600 hover:text-white"
                 >
                   {copiedCli ? (
                     <>
@@ -175,7 +176,7 @@ export function ScreenshotLightboxModal({
       onClick={onClose}
     >
       <div
-        className="w-full max-w-5xl rounded-xl border border-zinc-700 bg-[#121215] p-4 shadow-2xl"
+        className="animate-modal-in w-full max-w-5xl rounded-xl border border-zinc-700 bg-[#121215] p-4 shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between gap-4 border-b border-zinc-800 pb-3">
@@ -197,7 +198,7 @@ export function ScreenshotLightboxModal({
                   type="button"
                   onClick={() => onNavigate((activeIndex - 1 + items.length) % items.length)}
                   aria-label="Previous screenshot"
-                  className="rounded-md border border-zinc-700 p-1.5 text-zinc-300 hover:border-zinc-500 hover:text-white"
+                  className="rounded-md border border-zinc-700 p-1.5 text-zinc-300 transition-colors hover:border-zinc-500 hover:text-white"
                 >
                   <ChevronLeft className="h-4 w-4" />
                 </button>
@@ -205,7 +206,7 @@ export function ScreenshotLightboxModal({
                   type="button"
                   onClick={() => onNavigate((activeIndex + 1) % items.length)}
                   aria-label="Next screenshot"
-                  className="rounded-md border border-zinc-700 p-1.5 text-zinc-300 hover:border-zinc-500 hover:text-white"
+                  className="rounded-md border border-zinc-700 p-1.5 text-zinc-300 transition-colors hover:border-zinc-500 hover:text-white"
                 >
                   <ChevronRight className="h-4 w-4" />
                 </button>
@@ -215,7 +216,7 @@ export function ScreenshotLightboxModal({
               type="button"
               onClick={onClose}
               aria-label="Close screenshot preview"
-              className="rounded-md border border-zinc-700 p-1.5 text-zinc-400 hover:border-zinc-500 hover:text-white"
+              className="rounded-md border border-zinc-700 p-1.5 text-zinc-400 transition-colors hover:border-zinc-500 hover:text-white"
             >
               <X className="h-4 w-4" />
             </button>
@@ -252,8 +253,7 @@ const allScreenshots = [...featuredProjects, ...additionalProjects]
   }));
 
 /**
- * Editorial Featured Projects displaying real captured screenshots of each
- * uniquely themed app alongside concise descriptions and per-project accents.
+ * Clean standard 2-column Featured Projects grid with decluttered cards and scroll reveals.
  */
 export default function Projects({
   activeCategory: controlledCategory = undefined,
@@ -284,9 +284,12 @@ export default function Projects({
   return (
     <section id="projects" className="border-b border-zinc-800/80 bg-[#09090B] py-20 sm:py-24">
       <div className="mx-auto max-w-6xl px-5 sm:px-8">
-        <div className="flex flex-col justify-between gap-6 sm:flex-row sm:items-end">
+        <Reveal className="flex flex-col justify-between gap-6 sm:flex-row sm:items-end">
           <div className="max-w-xl">
-            <h2 className="text-2xl font-bold tracking-tight text-white sm:text-3xl">
+            <p className="font-mono text-[11px] uppercase tracking-widest text-zinc-500">
+              01 · Selected Work
+            </p>
+            <h2 className="mt-2 text-2xl font-bold tracking-tight text-white sm:text-3xl">
               Selected Projects
             </h2>
             <p className="mt-2 text-sm text-zinc-400 sm:text-base">
@@ -308,9 +311,9 @@ export default function Projects({
                   role="tab"
                   aria-selected={selected}
                   onClick={() => setCategory(tab.id)}
-                  className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+                  className={`rounded-md px-3 py-1.5 text-xs font-medium transition-all duration-200 ${
                     selected
-                      ? 'bg-zinc-100 font-semibold text-zinc-950'
+                      ? 'bg-zinc-100 font-semibold text-zinc-950 shadow-sm'
                       : 'text-zinc-400 hover:text-zinc-200'
                   }`}
                 >
@@ -319,19 +322,19 @@ export default function Projects({
               );
             })}
           </div>
-        </div>
+        </Reveal>
 
-        <div className="mt-10 space-y-6">
+        <div className="mt-10 grid grid-cols-1 gap-6 md:grid-cols-2">
           {visibleProjects.map((project, index) => {
             const activeLinks = project.links.filter((l) => isConfiguredLink(l.url));
+            const shownStack = project.stack.slice(0, 4);
+            const extraStackCount = project.stack.length - shownStack.length;
+
             return (
-              <article
-                key={project.id}
-                className="group grid grid-cols-1 gap-6 rounded-xl border border-zinc-800 bg-[#111114] p-5 transition-colors hover:border-zinc-700 sm:p-6 md:grid-cols-12 md:items-center md:gap-8"
-              >
-                {/* Left 16:9 Screenshot / Visual */}
-                <div className="md:col-span-5">
-                  <div className="aspect-video w-full overflow-hidden rounded-lg border border-zinc-800 bg-zinc-950">
+              <Reveal key={project.id} delay={(index % 2) * 70} className="h-full">
+                <article className="group flex h-full flex-col overflow-hidden rounded-xl border border-zinc-800 bg-[#111114] transition-all duration-300 hover:-translate-y-1 hover:border-zinc-700 hover:shadow-[0_16px_38px_-18px_rgba(0,0,0,0.85)]">
+                  {/* Top 16:9 Screenshot / Visual */}
+                  <div className="aspect-video w-full overflow-hidden border-b border-zinc-800/80 bg-zinc-950">
                     {project.image ? (
                       <button
                         type="button"
@@ -345,9 +348,9 @@ export default function Projects({
                         <img
                           src={project.image}
                           alt={project.imageAlt}
-                          className="h-full w-full object-cover object-top transition-transform duration-500 group-hover:scale-[1.02]"
+                          className="h-full w-full object-cover object-top transition-transform duration-500 ease-out group-hover:scale-[1.03]"
                         />
-                        <span className="pointer-events-none absolute right-2.5 bottom-2.5 inline-flex items-center gap-1 rounded border border-zinc-700/90 bg-zinc-950/85 px-2 py-1 text-[11px] font-medium text-zinc-200 opacity-0 transition-opacity group-hover/img:opacity-100">
+                        <span className="pointer-events-none absolute right-2.5 bottom-2.5 inline-flex items-center gap-1 rounded border border-zinc-700/90 bg-zinc-950/90 px-2 py-1 text-[11px] font-medium text-zinc-200 opacity-0 transition-opacity duration-200 group-hover/img:opacity-100">
                           <Maximize2 className="h-3 w-3" aria-hidden="true" />
                           <span>Zoom</span>
                         </span>
@@ -356,91 +359,90 @@ export default function Projects({
                       <ProjectVisual type={project.visualType} />
                     )}
                   </div>
-                </div>
 
-                {/* Right Project Copy with Per-Project Theme Accent */}
-                <div className="flex flex-col md:col-span-7">
-                  <div className="flex flex-wrap items-center gap-2.5 text-xs">
-                    <span className="font-mono text-zinc-400">
-                      {String(index + 1).padStart(2, '0')}
-                    </span>
-                    <span
-                      className="inline-flex items-center gap-1.5 font-medium"
-                      style={{ color: project.accentColor }}
-                    >
+                  {/* Card Content */}
+                  <div className="flex flex-1 flex-col p-5 sm:p-6">
+                    <div className="flex items-center justify-between gap-2 text-xs">
                       <span
-                        className="h-1.5 w-1.5 rounded-full"
-                        style={{ backgroundColor: project.accentColor }}
-                        aria-hidden="true"
-                      />
-                      {project.categoryLabel}
-                    </span>
-                    <span className="text-zinc-400">· {project.role}</span>
-                    {project.folderPath && (
-                      <span className="font-mono text-[11px] text-zinc-400">
-                        {project.folderPath}
-                      </span>
-                    )}
-                  </div>
-
-                  <h3 className="mt-2 text-xl font-semibold tracking-tight text-white">
-                    {project.title}
-                  </h3>
-
-                  <p className="mt-2.5 text-sm leading-relaxed text-zinc-300">
-                    {project.summary}
-                  </p>
-
-                  <div className="mt-4 flex flex-wrap gap-1.5">
-                    {project.stack.map((tech) => (
-                      <span
-                        key={tech}
-                        className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-0.5 text-xs font-medium text-zinc-300"
+                        className="inline-flex items-center gap-1.5 font-medium"
+                        style={{ color: project.accentColor }}
                       >
-                        {tech}
+                        <span
+                          className="h-1.5 w-1.5 rounded-full"
+                          style={{ backgroundColor: project.accentColor }}
+                          aria-hidden="true"
+                        />
+                        {project.categoryLabel}
                       </span>
-                    ))}
-                  </div>
+                      <span className="font-mono text-[11px] text-zinc-500">
+                        {String(index + 1).padStart(2, '0')}
+                      </span>
+                    </div>
 
-                  <div className="mt-5 flex flex-wrap items-center gap-2.5">
-                    {project.demoId && (
+                    <h3 className="mt-2 text-lg font-semibold tracking-tight text-white sm:text-xl">
+                      {project.title}
+                    </h3>
+
+                    <p className="mt-2 line-clamp-2 text-sm leading-relaxed text-zinc-400">
+                      {project.summary}
+                    </p>
+
+                    <div className="mt-4 flex flex-wrap gap-1.5">
+                      {shownStack.map((tech) => (
+                        <span
+                          key={tech}
+                          className="rounded border border-zinc-800 bg-zinc-950 px-2 py-0.5 text-[11px] font-medium text-zinc-300"
+                        >
+                          {tech}
+                        </span>
+                      ))}
+                      {extraStackCount > 0 && (
+                        <span className="rounded border border-zinc-800/80 bg-zinc-950/60 px-2 py-0.5 font-mono text-[11px] text-zinc-500">
+                          +{extraStackCount}
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="mt-auto flex flex-wrap items-center gap-2 pt-5">
+                      {project.demoId && (
+                        <button
+                          type="button"
+                          onClick={() => setLiveDemoProject({ ...project, id: project.demoId })}
+                          className="inline-flex items-center gap-1.5 rounded-md bg-zinc-100 px-3 py-1.5 text-xs font-semibold text-zinc-950 transition-all duration-200 hover:-translate-y-0.5 hover:bg-white active:translate-y-0"
+                        >
+                          <Play className="h-3.5 w-3.5 fill-current" aria-hidden="true" />
+                          <span>Live Sandbox</span>
+                        </button>
+                      )}
+
                       <button
                         type="button"
-                        onClick={() => setLiveDemoProject({ ...project, id: project.demoId })}
-                        className="inline-flex items-center gap-1.5 rounded-md bg-zinc-100 px-3.5 py-1.5 text-xs font-semibold text-zinc-950 transition-colors hover:bg-white"
+                        onClick={() => setSelectedDetails(project)}
+                        className="inline-flex items-center gap-1.5 rounded-md border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-xs font-medium text-zinc-200 transition-colors hover:border-zinc-500 hover:text-white"
                       >
-                        <Play className="h-3.5 w-3.5 fill-current" aria-hidden="true" />
-                        <span>Live Sandbox</span>
+                        <span>Project Details</span>
+                        <ArrowUpRight className="h-3.5 w-3.5 text-zinc-400" aria-hidden="true" />
                       </button>
-                    )}
 
-                    <button
-                      type="button"
-                      onClick={() => setSelectedDetails(project)}
-                      className="inline-flex items-center gap-1.5 rounded-md border border-zinc-700 bg-zinc-900 px-3.5 py-1.5 text-xs font-medium text-zinc-200 transition-colors hover:border-zinc-500 hover:text-white"
-                    >
-                      <span>Project Details</span>
-                      <ArrowUpRight className="h-3.5 w-3.5 text-zinc-400" aria-hidden="true" />
-                    </button>
-
-                    {activeLinks.map((link) => {
-                      const Icon = linkIconMap[link.kind] || ExternalLink;
-                      return (
-                        <a
-                          key={link.label}
-                          href={link.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1.5 rounded-md border border-zinc-700 bg-zinc-900 px-3.5 py-1.5 text-xs font-medium text-zinc-200 transition-colors hover:border-zinc-500 hover:text-white"
-                        >
-                          <Icon className="h-3.5 w-3.5" aria-hidden="true" />
-                          <span>{link.label}</span>
-                        </a>
-                      );
-                    })}
+                      {activeLinks.map((link) => {
+                        const Icon = linkIconMap[link.kind] || ExternalLink;
+                        return (
+                          <a
+                            key={link.label}
+                            href={link.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1.5 rounded-md border border-zinc-800 bg-zinc-950 px-3 py-1.5 text-xs font-medium text-zinc-300 transition-colors hover:border-zinc-600 hover:text-white"
+                          >
+                            <Icon className="h-3.5 w-3.5" aria-hidden="true" />
+                            <span>{link.label}</span>
+                          </a>
+                        );
+                      })}
+                    </div>
                   </div>
-                </div>
-              </article>
+                </article>
+              </Reveal>
             );
           })}
         </div>
