@@ -1,12 +1,32 @@
 import { useState } from 'react';
-import { Github, Linkedin, Mail, MapPin, Copy, Check, ArrowUpRight } from 'lucide-react';
+import {
+  ArrowUpRight,
+  Check,
+  Clock,
+  Copy,
+  Github,
+  Globe,
+  GraduationCap,
+  Linkedin,
+  Mail,
+  MapPin,
+  Play,
+  ShieldCheck,
+} from 'lucide-react';
 import { isConfiguredLink, profileData } from '../data/portfolioData';
 import ResumeMenu from './ResumeMenu';
+
+const highlightIcons = {
+  Standing: GraduationCap,
+  Certified: ShieldCheck,
+  English: Globe,
+  Availability: Clock,
+};
 
 /**
  * Editorial asymmetric Hero layout without generic SaaS glow blobs or boxed cards.
  */
-export default function Hero() {
+export default function Hero({ onNotify = null }) {
   const [copiedEmail, setCopiedEmail] = useState(false);
   const [pendingTrack, setPendingTrack] = useState(null);
 
@@ -18,6 +38,7 @@ export default function Hero() {
     try {
       await navigator.clipboard.writeText(profileData.email);
       setCopiedEmail(true);
+      onNotify?.('Copied email address to clipboard');
       setTimeout(() => setCopiedEmail(false), 2000);
     } catch {
       window.location.href = `mailto:${profileData.email}`;
@@ -39,13 +60,20 @@ export default function Hero() {
         <div className="grid grid-cols-1 gap-12 lg:grid-cols-12 lg:items-end">
           {/* Left 8 Columns: Name, Role & Primary Actions */}
           <div className="lg:col-span-8">
-            <div className="animate-fade-up flex items-center gap-4">
-              {hasAvatar && (
+            <div className="animate-fade-up flex items-center gap-3.5">
+              {hasAvatar ? (
                 <img
                   src={profileData.avatarUrl}
                   alt={profileData.fullName}
-                  className="h-14 w-14 rounded-full border border-zinc-700 object-cover"
+                  className="h-12 w-12 rounded-full border border-zinc-700 object-cover"
                 />
+              ) : (
+                <div
+                  aria-hidden="true"
+                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-zinc-700/90 bg-gradient-to-br from-zinc-800 via-zinc-900 to-zinc-950 font-mono text-sm font-bold tracking-tight text-white shadow-inner ring-1 ring-emerald-500/20"
+                >
+                  JL
+                </div>
               )}
               <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/25 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-400">
                 <span className="relative flex h-2 w-2" aria-hidden="true">
@@ -146,6 +174,14 @@ export default function Hero() {
                   <ArrowUpRight className="h-3.5 w-3.5 text-zinc-400" aria-hidden="true" />
                 </a>
               )}
+
+              <a
+                href="#projects"
+                className="inline-flex h-10 items-center gap-1.5 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3.5 text-sm font-medium text-emerald-300 transition-all duration-200 hover:-translate-y-0.5 hover:border-emerald-400/50 hover:bg-emerald-500/15 hover:text-emerald-200 active:translate-y-0"
+              >
+                <Play className="h-3.5 w-3.5 fill-current" aria-hidden="true" />
+                <span>Live Sandboxes</span>
+              </a>
             </div>
 
             {pendingTrack && (
@@ -179,20 +215,24 @@ export default function Hero() {
             className="animate-fade-up lg:col-span-4"
           >
             <dl className="grid grid-cols-2 gap-3 lg:grid-cols-1">
-              {profileData.highlights.map((item) => (
-                <div
-                  key={item.label}
-                  className="rounded-lg border border-zinc-800/90 bg-[#111114]/90 px-4 py-3 transition-colors duration-200 hover:border-zinc-700"
-                >
-                  <dt className="font-mono text-[10px] font-medium uppercase tracking-widest text-zinc-500">
-                    {item.label}
-                  </dt>
-                  <dd className="mt-1 text-base font-semibold tracking-tight text-white sm:text-lg">
-                    {item.value}{' '}
-                    <span className="block text-xs font-normal text-zinc-400">{item.detail}</span>
-                  </dd>
-                </div>
-              ))}
+              {profileData.highlights.map((item) => {
+                const Icon = highlightIcons[item.label];
+                return (
+                  <div
+                    key={item.label}
+                    className="rounded-lg border border-zinc-800/90 bg-[#111114]/90 px-4 py-3 transition-colors duration-200 hover:border-zinc-700"
+                  >
+                    <dt className="flex items-center justify-between gap-2 font-mono text-[10px] font-medium uppercase tracking-widest text-zinc-500">
+                      <span>{item.label}</span>
+                      {Icon && <Icon className="h-3.5 w-3.5 text-zinc-500" aria-hidden="true" />}
+                    </dt>
+                    <dd className="mt-1 text-base font-semibold tracking-tight text-white sm:text-lg">
+                      {item.value}{' '}
+                      <span className="block text-xs font-normal text-zinc-400">{item.detail}</span>
+                    </dd>
+                  </div>
+                );
+              })}
             </dl>
           </div>
         </div>

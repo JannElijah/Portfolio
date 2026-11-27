@@ -1,13 +1,24 @@
-import { ExternalLink } from 'lucide-react';
+import { Award, ExternalLink, GraduationCap, MessageSquare } from 'lucide-react';
 import { credentialsColumns } from '../data/portfolioData';
 import Reveal from './Reveal';
 
+const credentialIcons = {
+  certification: Award,
+  communication: MessageSquare,
+  academic: GraduationCap,
+};
+
 function CredentialCard({ column, twoColItems = false }) {
+  const Icon = credentialIcons[column.id] || Award;
+
   return (
     <div className="rounded-xl border border-zinc-800 bg-[#121215] p-6 transition-colors duration-200 hover:border-zinc-700">
-      <h3 className="border-b border-zinc-800 pb-4 text-base font-semibold text-white">
-        {column.title}
-      </h3>
+      <div className="flex items-center gap-2.5 border-b border-zinc-800 pb-4">
+        <span className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-zinc-800 bg-zinc-950 text-zinc-300">
+          <Icon className="h-3.5 w-3.5" aria-hidden="true" />
+        </span>
+        <h3 className="text-base font-semibold text-white">{column.title}</h3>
+      </div>
 
       <div className={twoColItems ? 'mt-5 grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2' : 'mt-5 space-y-4'}>
         {column.items.map((item) => (

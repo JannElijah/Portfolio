@@ -17,7 +17,7 @@ import Reveal from './Reveal';
 /**
  * Clean editorial Footer CTA & contact bar with quick OJT inquiry builder.
  */
-export default function Footer() {
+export default function Footer({ onNotify = null }) {
   const [copied, setCopied] = useState(false);
   const [pendingTrack, setPendingTrack] = useState(null);
   const [inquiryOpen, setInquiryOpen] = useState(false);
@@ -45,6 +45,7 @@ export default function Footer() {
     try {
       await navigator.clipboard.writeText(profileData.email);
       setCopied(true);
+      onNotify?.('Copied email address to clipboard');
       setTimeout(() => setCopied(false), 2000);
     } catch {
       window.location.href = `mailto:${profileData.email}`;
@@ -55,6 +56,7 @@ export default function Footer() {
     try {
       await navigator.clipboard.writeText(`To: ${profileData.email}\nSubject: ${inquirySubject}\n\n${inquiryBody}`);
       setCopiedInquiry(true);
+      onNotify?.('OJT inquiry draft copied to clipboard');
       setTimeout(() => setCopiedInquiry(false), 2000);
     } catch {
       setCopiedInquiry(false);

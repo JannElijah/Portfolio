@@ -177,4 +177,55 @@ describe('Portfolio UI & interactive workflows', () => {
     await user.click(within(siteDialog).getByRole('button', { name: /Scan Staging PR Branch/i }));
     expect(within(siteDialog).getByText(/Missing og:image/i)).toBeInTheDocument();
   });
+
+  it('supports progressive disclosure of featured projects and upgraded Case Study modal actions', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    expect(screen.queryByText(/CryptoSight — Quantitative Market/i)).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: /Show all 10 featured projects/i }));
+    expect(screen.getByText(/CryptoSight — Quantitative Market/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Show fewer projects/i })).toBeInTheDocument();
+
+    const mailCard = screen.getByText(/MailPilot AI — Email Triage/i).closest('article');
+    await user.click(within(mailCard).getByRole('button', { name: /Project Details/i }));
+
+    const detailsDialog = screen.getByRole('dialog');
+    expect(within(detailsDialog).getByText(/Complete Tech Stack/i)).toBeInTheDocument();
+    expect(within(detailsDialog).getByText('pytest')).toBeInTheDocument();
+
+    await user.click(within(detailsDialog).getByRole('button', { name: /Launch Live Sandbox/i }));
+    const sandboxDialog = screen.getByRole('dialog');
+    expect(within(sandboxDialog).getByRole('button', { name: /Approve & Send Reply/i })).toBeInTheDocument();
+  });
+
+  it('cross-filters projects from Skills badges and launches projects via Command Palette', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    const skillsSection = document.getElementById('skills');
+    const reactSkillBtn = within(skillsSection).getByRole('button', {
+      name: /Filter projects by React\b/i,
+    });
+    await user.click(reactSkillBtn);
+
+    expect(screen.getByText(/Filtered by skill:/i)).toBeInTheDocument();
+    expect(screen.getByText(/CogniCore — Adaptive Cognitive Training Platform/i)).toBeInTheDocument();
+    expect(screen.queryByText(/MailPilot AI — Email Triage/i)).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /Clear skill filter/i }));
+    expect(screen.getByText(/MailPilot AI — Email Triage/i)).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /Open quick search/i }));
+    const paletteDialog = screen.getByRole('dialog', { name: /Quick command palette/i });
+    await user.type(within(paletteDialog).getByPlaceholderText(/Search 18 projects/i), 'WaferBench');
+
+    const projectMatches = within(paletteDialog).getAllByRole('button', {
+      name: /WaferBench — MCU Telemetry/i,
+    });
+    await user.click(projectMatches[projectMatches.length - 1]);
+
+    const detailsDialog = screen.getByRole('dialog');
+    expect(within(detailsDialog).getByText(/WaferBench — MCU Telemetry/i)).toBeInTheDocument();
+  });
 });

@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
-import { Menu, X } from 'lucide-react';
+import { Menu, Search, X } from 'lucide-react';
 import { navItems, profileData } from '../data/portfolioData';
 
 /**
  * Minimal architectural top navigation bar.
  */
-export default function Navbar() {
+export default function Navbar({ onOpenPalette = null }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [activeId, setActiveId] = useState('about');
   const [scrollProgress, setScrollProgress] = useState(0);
@@ -104,22 +104,51 @@ export default function Navbar() {
           })}
         </nav>
 
-        <a
-          href={`mailto:${profileData.email}`}
-          className="hidden rounded-md border border-zinc-700 bg-zinc-900 px-3.5 py-1.5 text-xs font-medium text-zinc-100 transition-all duration-200 hover:-translate-y-0.5 hover:border-zinc-500 hover:bg-zinc-800 active:translate-y-0 md:inline-flex"
-        >
-          Get in Touch
-        </a>
+        <div className="hidden items-center gap-2 md:flex">
+          {typeof onOpenPalette === 'function' && (
+            <button
+              type="button"
+              onClick={onOpenPalette}
+              aria-label="Open quick search"
+              className="inline-flex items-center gap-2 rounded-md border border-zinc-800 bg-[#121215] px-2.5 py-1.5 text-xs text-zinc-400 transition-colors hover:border-zinc-600 hover:text-zinc-200"
+            >
+              <Search className="h-3.5 w-3.5 text-zinc-400" aria-hidden="true" />
+              <span>Search</span>
+              <kbd className="rounded border border-zinc-700 bg-zinc-950 px-1.5 py-0.5 font-mono text-[10px] text-zinc-400">
+                Ctrl K
+              </kbd>
+            </button>
+          )}
 
-        <button
-          type="button"
-          onClick={() => setMobileOpen((prev) => !prev)}
-          aria-expanded={mobileOpen}
-          aria-label="Toggle navigation menu"
-          className="rounded-md border border-zinc-800 p-2 text-zinc-300 transition-colors hover:text-white md:hidden"
-        >
-          {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-        </button>
+          <a
+            href={`mailto:${profileData.email}`}
+            className="inline-flex rounded-md border border-zinc-700 bg-zinc-900 px-3.5 py-1.5 text-xs font-medium text-zinc-100 transition-all duration-200 hover:-translate-y-0.5 hover:border-zinc-500 hover:bg-zinc-800 active:translate-y-0"
+          >
+            Get in Touch
+          </a>
+        </div>
+
+        <div className="flex items-center gap-2 md:hidden">
+          {typeof onOpenPalette === 'function' && (
+            <button
+              type="button"
+              onClick={onOpenPalette}
+              aria-label="Mobile quick search"
+              className="rounded-md border border-zinc-800 p-2 text-zinc-300 transition-colors hover:text-white"
+            >
+              <Search className="h-4 w-4" aria-hidden="true" />
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => setMobileOpen((prev) => !prev)}
+            aria-expanded={mobileOpen}
+            aria-label="Toggle navigation menu"
+            className="rounded-md border border-zinc-800 p-2 text-zinc-300 transition-colors hover:text-white"
+          >
+            {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          </button>
+        </div>
       </div>
 
       <div aria-hidden="true" className="h-[2px] w-full bg-zinc-900">
