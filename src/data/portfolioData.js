@@ -89,7 +89,7 @@ export const featuredProjects = [
       ],
     },
     links: [
-      { label: 'Live Demo', url: '[INSERT_LINK]', kind: 'live' },
+      { label: 'Live Demo', url: 'https://cognicore-workspace.vercel.app', kind: 'live' },
       { label: 'GitHub', url: '[INSERT_LINK]', kind: 'github' },
     ],
   },
