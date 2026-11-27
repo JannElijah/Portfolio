@@ -9,7 +9,15 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import pandas as pd
 
-from app import build_hazard_snapshot_html, classify_heat_index, filter_weather_by_risk, get_wind_direction
+from app import (
+    attach_nearest_city,
+    build_hazard_snapshot_html,
+    classify_heat_index,
+    compute_regional_alert_level,
+    filter_weather_by_risk,
+    get_wind_direction,
+    haversine_km,
+)
 
 
 def test_wind_direction_compass_bins() -> None:
@@ -42,3 +50,19 @@ def test_weather_risk_filtering_and_html_advisory() -> None:
     assert "StormWatch PH — Regional Hazard Advisory Snapshot" in html_doc
     assert "M 4.8" in html_doc
     assert "Manila" in html_doc
+
+
+def test_haversine_nearest_city_and_alert_levels() -> None:
+    dist_mnl_ceb = haversine_km(14.5995, 120.9842, 10.3157, 123.8854)
+    assert 550 <= dist_mnl_ceb <= 590
+
+    q_df = attach_nearest_city(pd.DataFrame([{"lat": 14.5, "lon": 121.0, "magnitude": 5.2, "depth_km": 10.0}]))
+    assert q_df.iloc[0]["nearest_city"] == "Manila"
+    assert q_df.iloc[0]["nearest_km"] < 30.0
+
+    w_ok = pd.DataFrame([{"heat_risk": "Normal"}])
+    w_amber = pd.DataFrame([{"heat_risk": "Extreme Caution"}])
+    q_low = pd.DataFrame([{"magnitude": 2.4}])
+    assert compute_regional_alert_level(q_df, w_ok)["level"] == "RED"
+    assert compute_regional_alert_level(q_low, w_amber)["level"] == "AMBER"
+    assert compute_regional_alert_level(q_low, w_ok)["level"] == "GREEN"

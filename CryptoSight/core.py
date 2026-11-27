@@ -147,6 +147,35 @@ def compute_risk_metrics(series: pd.Series) -> dict[str, float]:
     return {"max_drawdown_pct": round(float(drawdown), 2), "sharpe_ratio": round(sharpe, 2)}
 
 
+def run_sma_crossover_backtest(df: pd.DataFrame, fast: int = 10, slow: int = 20) -> dict:
+    """Vectorized SMA crossover backtest comparing strategy vs. buy-and-hold equity (Base 100)."""
+    if df.empty or len(df) < 3:
+        empty_eq = pd.DataFrame({"Strategy": [], "BuyHold": []})
+        return {"strategy_return_pct": 0.0, "buy_hold_return_pct": 0.0, "trades_count": 0, "win_rate_pct": 0.0, "equity_df": empty_eq}
+
+    close = df["Close"].astype(float)
+    fast_sma = close.rolling(window=max(2, int(fast))).mean()
+    slow_sma = close.rolling(window=max(3, int(slow))).mean()
+    signal = (fast_sma > slow_sma).astype(int)
+    pos = signal.shift(1).fillna(0)
+    daily_ret = close.pct_change().fillna(0.0)
+    strat_ret = pos * daily_ret
+
+    strat_eq = 100.0 * (1.0 + strat_ret).cumprod()
+    bh_eq = 100.0 * (1.0 + daily_ret).cumprod()
+    active_days = strat_ret[pos > 0]
+    win_rate = float((active_days > 0).mean() * 100.0) if len(active_days) > 0 else 0.0
+    trades = int((signal.diff().abs() > 0).sum())
+    equity_df = pd.DataFrame({"Strategy": strat_eq, "BuyHold": bh_eq}, index=df.index)
+    return {
+        "strategy_return_pct": round(float(strat_eq.iloc[-1] - 100.0), 2),
+        "buy_hold_return_pct": round(float(bh_eq.iloc[-1] - 100.0), 2),
+        "trades_count": trades,
+        "win_rate_pct": round(win_rate, 1),
+        "equity_df": equity_df,
+    }
+
+
 def deterministic_sentiment_fallback(headlines: list[dict], rsi_val: float | None) -> tuple[str, str]:
     """Rule-based headline + RSI fallback when Gemini key is absent or rate-limited."""
     bull_words = {"surge", "rally", "gain", "etf", "adoption", "record", "inflow", "bull", "upgrade"}

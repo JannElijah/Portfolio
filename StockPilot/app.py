@@ -10,6 +10,7 @@ from core import (
     LocalInventoryStore,
     SupabaseInventoryStore,
     build_qr_label_sheet_html,
+    compute_reorder_plan,
     generate_qr,
 )
 
@@ -27,7 +28,7 @@ st.markdown(
     """
 <style>
     .stApp {
-        background-color: #111215;
+        background: radial-gradient(960px 420px at 85% -10%, rgba(245,158,11,0.08), transparent), #111215;
         color: #f4f4f5;
     }
     section[data-testid="stSidebar"] {
@@ -40,6 +41,7 @@ st.markdown(
         border-top: 3px solid #f59e0b;
         padding: 14px 20px;
         border-radius: 8px;
+        transition: border-color 0.15s ease;
     }
     div[data-testid="stMetricValue"] {
         color: #fafafa;
@@ -171,26 +173,47 @@ if menu == "Dashboard":
             )
             st.altair_chart(pie_chart, use_container_width=True)
 
-        if not low_stock_df.empty:
-            st.warning(
-                f"Reorder Watch ({len(low_stock_df)} items below {low_stock_threshold} units): "
-                + ", ".join(low_stock_df["name"].tolist())
+        reorder_df = compute_reorder_plan(df, threshold=low_stock_threshold, target_buffer=max(low_stock_threshold + 5, 15))
+        if not reorder_df.empty:
+            st.divider()
+            r_head, r_cost = st.columns([3, 1])
+            r_head.subheader("Reorder Planner & Quick Restock")
+            r_cost.metric("Est. Restock Budget", f"${reorder_df['est_cost'].sum():,.2f}")
+            st.dataframe(
+                reorder_df,
+                use_container_width=True,
+                hide_index=True,
+                column_config={"est_cost": st.column_config.NumberColumn("Est. Cost", format="$%.2f")},
             )
+            if hasattr(store, "adjust_stock"):
+                act_cols = st.columns([2, 1, 1])
+                opts = {f"#{int(r['id'])} {r['name']} (qty {int(r['quantity'])})": int(r["id"]) for _, r in reorder_df.iterrows()}
+                picked = act_cols[0].selectbox("Target Low-Stock SKU", list(opts.keys()), label_visibility="collapsed")
+                target_id = opts[picked]
+                if act_cols[1].button("Quick Restock (+10)", type="primary", use_container_width=True):
+                    store.adjust_stock(target_id, 10, "Dashboard quick restock")
+                    st.rerun()
+                if act_cols[2].button("Dispatch (-1)", use_container_width=True):
+                    store.adjust_stock(target_id, -1, "Dashboard dispatch")
+                    st.rerun()
 
 elif menu == "Inventory":
     st.title("Live Inventory Ledger")
     if df.empty:
         st.info("No items found.")
     else:
-        col_search, col_cat, col_export = st.columns([2, 1, 1])
+        col_search, col_cat, col_lvl, col_export = st.columns([2, 1, 1, 1])
         search = col_search.text_input("Search SKU or Product Name", placeholder="e.g. Cisco, Laptop...")
         selected_cat = col_cat.selectbox("Category Filter", ["All"] + CATEGORIES)
+        stock_lvl = col_lvl.selectbox("Stock Level", ["All Stock", "Low Stock Only"])
 
         filtered = df.copy()
         if search:
             filtered = filtered[filtered["name"].str.contains(search, case=False, na=False)]
         if selected_cat != "All":
             filtered = filtered[filtered["category"] == selected_cat]
+        if stock_lvl == "Low Stock Only":
+            filtered = filtered[filtered["quantity"] < low_stock_threshold]
 
         col_export.markdown("<br>", unsafe_allow_html=True)
         col_export.download_button(

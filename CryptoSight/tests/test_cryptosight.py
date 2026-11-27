@@ -15,6 +15,7 @@ from core import (
     compute_rsi,
     deterministic_sentiment_fallback,
     normalize_news_article,
+    run_sma_crossover_backtest,
     synthetic_ohlcv,
 )
 
@@ -68,3 +69,9 @@ def test_macd_bollinger_and_risk_metrics() -> None:
     assert (mid.dropna() >= low.dropna()).all()
     assert risk["max_drawdown_pct"] <= 0.0
     assert isinstance(risk["sharpe_ratio"], float)
+
+    bt = run_sma_crossover_backtest(df, fast=10, slow=20)
+    assert len(bt["equity_df"]) == len(df)
+    assert isinstance(bt["strategy_return_pct"], float)
+    assert isinstance(bt["buy_hold_return_pct"], float)
+    assert bt["trades_count"] >= 0 and 0.0 <= bt["win_rate_pct"] <= 100.0

@@ -20,6 +20,7 @@ from core import (
     compute_rsi,
     deterministic_sentiment_fallback,
     normalize_news_article,
+    run_sma_crossover_backtest,
     synthetic_ohlcv,
 )
 
@@ -204,7 +205,13 @@ news_articles = get_news(selected_ticker)
 sentiment, explanation, engine_label = get_ai_sentiment(news_articles, latest_rsi)
 st.info(f"**Market Sentiment ({engine_label}): {sentiment}** — {explanation}")
 
-tab1, tab2, tab3, tab4 = st.tabs(["Candlestick & RSI", "Relative Performance", "Portfolio Valuation", "Headlines"])
+tab1, tab2, tab3, tab4, tab5 = st.tabs([
+    "Candlestick & Indicators",
+    "Relative Performance",
+    "Portfolio Valuation",
+    "Headlines",
+    "Quant Backtest Lab",
+])
 
 with tab1:
     ctl1, ctl2, ctl3 = st.columns([1, 1, 1.5])
@@ -216,15 +223,15 @@ with tab1:
     if not chart_df.empty:
         chart_df["RSI"] = compute_rsi(chart_df["Close"])
         bb_up, bb_mid, bb_low = compute_bollinger_bands(chart_df["Close"])
-        macd_line, macd_sig, _ = compute_macd(chart_df["Close"])
+        macd_line, macd_sig, macd_hist = compute_macd(chart_df["Close"])
         risk = compute_risk_metrics(chart_df["Close"])
         ctl3.caption(f"Max Drawdown: **{risk['max_drawdown_pct']}%** · Sharpe Est: **{risk['sharpe_ratio']}** · Latest MACD: **{macd_line.iloc[-1]:+.1f}**")
         fig = make_subplots(
-            rows=3,
+            rows=4,
             cols=1,
             shared_xaxes=True,
-            vertical_spacing=0.06,
-            row_heights=[0.58, 0.20, 0.22],
+            vertical_spacing=0.045,
+            row_heights=[0.46, 0.16, 0.19, 0.19],
         )
         fig.add_trace(
             go.Candlestick(
@@ -246,18 +253,19 @@ with tab1:
             fig.add_trace(go.Scatter(x=chart_df.index, y=bb_low, mode="lines", name="BB Lower", line=dict(color="rgba(56,189,248,0.45)", width=1, dash="dot")), row=1, col=1)
         vol_colors = ["#10b981" if c >= o else "#f43f5e" for o, c in zip(chart_df["Open"], chart_df["Close"])]
         fig.add_trace(go.Bar(x=chart_df.index, y=chart_df["Volume"], marker_color=vol_colors, name="Volume"), row=2, col=1)
-        fig.add_trace(
-            go.Scatter(x=chart_df.index, y=chart_df["RSI"], mode="lines", name="RSI 14", line=dict(color="#38bdf8", width=1.6)),
-            row=3,
-            col=1,
-        )
+        fig.add_trace(go.Scatter(x=chart_df.index, y=chart_df["RSI"], mode="lines", name="RSI 14", line=dict(color="#38bdf8", width=1.6)), row=3, col=1)
+        fig.add_hrect(y0=30, y1=70, fillcolor="rgba(56,189,248,0.08)", line_width=0, row=3, col=1)
         fig.add_hline(y=70, line_dash="dot", line_color="#f43f5e", row=3, col=1)
         fig.add_hline(y=30, line_dash="dot", line_color="#10b981", row=3, col=1)
+        hist_colors = ["#10b981" if v >= 0 else "#f43f5e" for v in macd_hist.fillna(0.0)]
+        fig.add_trace(go.Bar(x=chart_df.index, y=macd_hist, marker_color=hist_colors, name="MACD Hist"), row=4, col=1)
+        fig.add_trace(go.Scatter(x=chart_df.index, y=macd_line, mode="lines", name="MACD", line=dict(color="#a78bfa", width=1.5)), row=4, col=1)
+        fig.add_trace(go.Scatter(x=chart_df.index, y=macd_sig, mode="lines", name="Signal", line=dict(color="#f59e0b", width=1.2)), row=4, col=1)
         fig.update_layout(
             template="plotly_dark",
             paper_bgcolor="#090b0e",
             plot_bgcolor="#12161c",
-            height=620,
+            height=720,
             xaxis_rangeslider_visible=False,
             margin=dict(l=16, r=16, t=20, b=16),
         )
@@ -303,7 +311,12 @@ with tab3:
             )
     if rows:
         pdf = pd.DataFrame(rows)
-        st.metric("Total Portfolio Valuation", f"${pdf['Value (USD)'].sum():,.2f}")
+        total_val = float(pdf["Value (USD)"].sum())
+        total_cost = sum(item["quantity"] * item["avg_buy_price"] for item in detailed_holdings if item["quantity"] > 0 and item["avg_buy_price"] > 0)
+        unreal_pnl = total_val - total_cost if total_cost > 0 else 0.0
+        pv1, pv2 = st.columns(2)
+        pv1.metric("Total Portfolio Valuation", f"${total_val:,.2f}")
+        pv2.metric("Unrealized P&L", f"${unreal_pnl:+,.2f}")
         c_pie, c_tbl = st.columns([1, 1.4])
         with c_pie:
             pie = go.Figure(data=[go.Pie(labels=pdf["Asset"], values=pdf["Value (USD)"], hole=0.45)])
@@ -317,6 +330,15 @@ with tab3:
                 file_name="cryptosight_portfolio.csv",
                 mime="text/csv",
             )
+        with st.expander("Update Average Buy Basis ($)"):
+            basis_opts = [item["ticker"] for item in detailed_holdings]
+            b_col1, b_col2, b_col3 = st.columns([1.2, 1.2, 1])
+            b_asset = b_col1.selectbox("Asset", basis_opts, key="basis_asset")
+            cur_item = next(i for i in detailed_holdings if i["ticker"] == b_asset)
+            new_basis = b_col2.number_input("Avg Buy Basis ($)", min_value=0.0, value=float(cur_item["avg_buy_price"]), step=10.0)
+            if b_col3.button("Save Basis", use_container_width=True):
+                store.save(b_asset, cur_item["quantity"], avg_buy_price=float(new_basis))
+                st.rerun()
     else:
         st.info("Set asset quantities in the sidebar to inspect portfolio allocation.")
 
@@ -326,3 +348,23 @@ with tab4:
             st.markdown(f"**[{art['title']}]({art['link']})** — _{art['publisher']}_")
     else:
         st.info("No live news headlines available for this ticker right now.")
+
+with tab5:
+    st.subheader(f"{selected_ticker} · SMA Crossover Backtest Lab")
+    bc1, bc2 = st.columns(2)
+    fast_win = bc1.slider("Fast SMA Window", 5, 20, 10)
+    slow_win = bc2.slider("Slow SMA Window", 15, 50, 20)
+    bt_df, _ = get_crypto_data(selected_ticker, "6mo", "1d")
+    bt = run_sma_crossover_backtest(bt_df, fast=fast_win, slow=slow_win)
+    bk1, bk2, bk3, bk4 = st.columns(4)
+    bk1.metric("Strategy Return", f"{bt['strategy_return_pct']:+.2f}%")
+    bk2.metric("Buy & Hold Return", f"{bt['buy_hold_return_pct']:+.2f}%")
+    bk3.metric("Signal Trades", bt["trades_count"])
+    bk4.metric("Active-Day Win Rate", f"{bt['win_rate_pct']:.1f}%")
+    eq_df = bt["equity_df"]
+    if not eq_df.empty:
+        bt_fig = go.Figure()
+        bt_fig.add_trace(go.Scatter(x=eq_df.index, y=eq_df["Strategy"], mode="lines", name="SMA Strategy", line=dict(color="#10b981", width=2.2)))
+        bt_fig.add_trace(go.Scatter(x=eq_df.index, y=eq_df["BuyHold"], mode="lines", name="Buy & Hold", line=dict(color="#94a3b8", width=1.6, dash="dot")))
+        bt_fig.update_layout(title="Equity Curve Comparison (Base 100)", template="plotly_dark", paper_bgcolor="#090b0e", plot_bgcolor="#12161c")
+        st.plotly_chart(bt_fig, use_container_width=True)

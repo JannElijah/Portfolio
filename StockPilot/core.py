@@ -115,6 +115,24 @@ class LocalInventoryStore:
         except Exception as exc:
             return False, str(exc)
 
+    def adjust_stock(self, item_id: int, delta: int, note: str = "") -> tuple[bool, str | None]:
+        """Atomically adjust SKU quantity (clamped >= 0) and log RESTOCK/DISPATCH movement."""
+        try:
+            with self._connect() as conn:
+                row = conn.execute("SELECT name, quantity FROM inventory WHERE id = ?", (item_id,)).fetchone()
+                if not row:
+                    return False, "Item not found."
+                name, old_qty = str(row[0]), int(row[1])
+                new_qty = max(0, old_qty + int(delta))
+                applied = new_qty - old_qty
+                conn.execute("UPDATE inventory SET quantity = ? WHERE id = ?", (new_qty, item_id))
+                action = "RESTOCK" if delta >= 0 else "DISPATCH"
+                msg = note.strip() or f"Qty {old_qty}->{new_qty}"
+                self._record_movement(conn, name, action, applied, msg)
+            return True, None
+        except Exception as exc:
+            return False, str(exc)
+
     def delete(self, item_id: int) -> tuple[bool, str | None]:
         try:
             with self._connect() as conn:
@@ -188,6 +206,19 @@ class SupabaseInventoryStore:
             return True, None
         except Exception as exc:
             return False, str(exc)
+
+
+def compute_reorder_plan(df: pd.DataFrame, threshold: int = 10, target_buffer: int = 15) -> pd.DataFrame:
+    """Identify SKUs below threshold and estimate restock quantities and costs to reach target_buffer."""
+    cols = ["id", "name", "category", "quantity", "suggested_order", "est_cost"]
+    if df.empty:
+        return pd.DataFrame(columns=cols)
+    low = df[df["quantity"] < threshold].copy()
+    if low.empty:
+        return pd.DataFrame(columns=cols)
+    low["suggested_order"] = low["quantity"].apply(lambda q: max(1, int(target_buffer) - int(q)))
+    low["est_cost"] = (low["suggested_order"] * low["price"].astype(float)).round(2)
+    return low[cols].sort_values(by="quantity", ascending=True).reset_index(drop=True)
 
 
 def generate_qr(data: str) -> bytes:

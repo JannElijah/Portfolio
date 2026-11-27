@@ -5,6 +5,7 @@ from __future__ import annotations
 import base64
 import hashlib
 import html
+import json
 import sqlite3
 import time
 from datetime import datetime
@@ -102,6 +103,13 @@ class CryptoHandler:
     def key_fingerprint(key: str) -> str:
         digest = hashlib.sha256(key.encode("utf-8")).hexdigest().upper()
         return f"{digest[:4]}·{digest[4:8]}"
+
+    @staticmethod
+    def derive_safety_code(key: str) -> str:
+        """Derive a deterministic 6-digit numeric safety verification code (XXX-XXX)."""
+        num = int(hashlib.sha256(key.encode("utf-8")).hexdigest()[:8], 16) % 1_000_000
+        s = f"{num:06d}"
+        return f"{s[:3]}-{s[3:]}"
 
     @staticmethod
     def validate_key(key: str) -> bool:
@@ -216,37 +224,91 @@ class StorageManager:
         with self._connect() as conn:
             conn.execute("DELETE FROM messages WHERE channel = ?", (channel,))
 
+    def rotate_channel_key(self, channel: str, old_key: str, new_key: str) -> int:
+        """Decrypt readable messages in channel with old_key and re-encrypt atomically with new_key."""
+        rotated = 0
+        with self._connect() as conn:
+            rows = conn.execute("SELECT id, ciphertext FROM messages WHERE channel = ?", (channel,)).fetchall()
+            for row_id, ct in rows:
+                pt = CryptoHandler.decrypt(str(ct), old_key)
+                if pt is not None:
+                    new_ct = CryptoHandler.encrypt(pt, new_key)
+                    conn.execute("UPDATE messages SET ciphertext = ? WHERE id = ?", (new_ct, int(row_id)))
+                    rotated += 1
+        return rotated
+
+    def export_channel_json(self, channel: str, room_key: str) -> str:
+        """Export decrypted messages and metadata as formatted JSON with SHA-256 prefixes."""
+        df = self.load_messages(channel)
+        records = []
+        for _, row in df.iterrows():
+            ct = str(row["ciphertext"])
+            dec = CryptoHandler.decrypt(ct, room_key)
+            if dec is not None:
+                records.append(
+                    {
+                        "id": int(row["id"]),
+                        "timestamp": str(row["timestamp"]),
+                        "username": str(row["username"]),
+                        "plaintext": dec,
+                        "sha256_prefix": CryptoHandler.message_sha256(ct),
+                    }
+                )
+        payload = {
+            "channel": channel,
+            "fingerprint": CryptoHandler.key_fingerprint(room_key),
+            "safety_code": CryptoHandler.derive_safety_code(room_key),
+            "exported_at": datetime.now().isoformat(timespec="seconds"),
+            "messages": records,
+        }
+        return json.dumps(payload, indent=2)
+
 
 @st.fragment(run_every=2)
-def render_messages(storage: StorageManager, channel: str, room_key: str, username: str, debug_mode: bool) -> None:
+def render_messages(
+    storage: StorageManager,
+    channel: str,
+    room_key: str,
+    username: str,
+    debug_mode: bool,
+    search_query: str = "",
+) -> None:
     df = storage.load_messages(channel)
-    with st.container(height=460, border=True):
+    with st.container(height=440, border=True):
         if df.empty:
             st.caption("Channel clear. Encrypted messages sent here are stored only as Fernet ciphertext.")
             return
 
+        q = search_query.strip().lower()
+        rendered_any = False
         for _, row in df.iterrows():
             safe_user = html.escape(str(row["username"]))
             safe_ts = html.escape(str(row["timestamp"]))
-            decrypted = CryptoHandler.decrypt(row["ciphertext"], room_key)
+            ct = str(row["ciphertext"])
+            decrypted = CryptoHandler.decrypt(ct, room_key)
 
             if decrypted is not None:
+                if q and q not in decrypted.lower() and q not in str(row["username"]).lower():
+                    continue
+                rendered_any = True
                 safe_body = html.escape(decrypted)
                 css_cls = "bubble-self" if row["username"] == username else "bubble-peer"
+                hash_tag = f" · SHA256:{CryptoHandler.message_sha256(ct)}" if debug_mode else ""
                 st.markdown(
                     f"""
                     <div class="chat-row">
                         <div class="{css_cls}">
                             <strong>{safe_user}</strong>: {safe_body}
-                            <div class="meta">{safe_ts} · VERIFIED HMAC</div>
+                            <div class="meta">{safe_ts} · VERIFIED HMAC{hash_tag}</div>
                         </div>
                     </div>
                     """,
                     unsafe_allow_html=True,
                 )
                 if debug_mode:
-                    st.code(f"CIPHERTEXT: {row['ciphertext']}", language="text")
-            else:
+                    st.code(f"CIPHERTEXT: {ct}", language="text")
+            elif not q:
+                rendered_any = True
                 st.markdown(
                     f"""
                     <div class="chat-row">
@@ -258,6 +320,8 @@ def render_messages(storage: StorageManager, channel: str, room_key: str, userna
                     """,
                     unsafe_allow_html=True,
                 )
+        if not rendered_any and q:
+            st.caption("No decrypted messages matched your search filter.")
 
 
 def main() -> None:
@@ -317,12 +381,30 @@ def main() -> None:
             st.toast(f"Purged {removed} expired messages.")
             st.rerun()
 
+        if valid_key:
+            with st.expander("Rotate Channel Passphrase"):
+                next_pass = st.text_input("New Passphrase", type="password", key="rotate_pass_input")
+                if st.button("Re-Encrypt Channel", use_container_width=True) and next_pass.strip():
+                    next_key = CryptoHandler.derive_key_from_password(next_pass.strip(), channel)
+                    count_rot = storage.rotate_channel_key(channel, room_key, next_key)
+                    st.session_state.demo_pass = next_pass.strip()
+                    st.toast(f"Rotated & re-encrypted {count_rot} message(s).")
+                    st.rerun()
+
     st.header(f"Channel // #{channel}")
     if not valid_key:
         st.info("Set a room passphrase or Fernet key in the sidebar to decrypt and transmit messages.")
         st.stop()
 
-    render_messages(storage, channel, room_key, username, debug_mode)
+    msg_df = storage.load_messages(channel)
+    t1, t2, t3, t4 = st.columns(4)
+    t1.metric("Cipher Suite", "Fernet AES-128")
+    t2.metric("Key Fingerprint", CryptoHandler.key_fingerprint(room_key))
+    t3.metric("Safety Code", CryptoHandler.derive_safety_code(room_key))
+    t4.metric("Stored Messages", len(msg_df))
+
+    search_q = st.text_input("Filter Channel Messages", placeholder="Search decrypted plaintext or sender...")
+    render_messages(storage, channel, room_key, username, debug_mode, search_query=search_q)
 
     with st.form("send_msg_form", clear_on_submit=True):
         c_msg, c_btn = st.columns([6, 1])
@@ -340,11 +422,18 @@ def main() -> None:
                 if dec is not None:
                     lines.append(f"[{row['timestamp']}] {row['username']}: {dec}")
             if lines:
-                st.download_button(
+                dl1, dl2 = st.columns(2)
+                dl1.download_button(
                     "Export Decrypted Audit Log (.txt)",
                     data="\n".join(lines).encode("utf-8"),
                     file_name=f"devchat_{channel.lower()}_audit.txt",
                     mime="text/plain",
+                )
+                dl2.download_button(
+                    "Download JSON Audit Log (.json)",
+                    data=storage.export_channel_json(channel, room_key).encode("utf-8"),
+                    file_name=f"devchat_{channel.lower()}_audit.json",
+                    mime="application/json",
                 )
 
 

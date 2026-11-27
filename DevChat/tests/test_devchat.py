@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import sys
 from pathlib import Path
 
@@ -19,6 +20,8 @@ def test_channel_isolated_pbkdf2_and_fernet_roundtrip() -> None:
     cipher = CryptoHandler.encrypt("Status nominal", key_gen)
     assert CryptoHandler.decrypt(cipher, key_gen) == "Status nominal"
     assert CryptoHandler.decrypt(cipher, key_ops) is None
+    safety = CryptoHandler.derive_safety_code(key_gen)
+    assert len(safety) == 7 and safety[3] == "-" and safety.replace("-", "").isdigit()
 
 
 def test_storage_per_channel_isolation_and_clear(tmp_path) -> None:
@@ -37,7 +40,17 @@ def test_storage_per_channel_isolation_and_clear(tmp_path) -> None:
     assert len(store.load_messages("SecAudit")) == 0
 
     store.add_message("SecAudit", "alice", cipher_txt)
-    assert len(store.load_messages("SecAudit")) == 1
+    k_new = CryptoHandler.derive_key_from_password("p2", "SecAudit")
+    assert store.rotate_channel_key("SecAudit", k, k_new) == 1
+    rotated_ct = store.load_messages("SecAudit").iloc[0]["ciphertext"]
+    assert CryptoHandler.decrypt(rotated_ct, k) is None
+    assert CryptoHandler.decrypt(rotated_ct, k_new) == "Audit ready"
+
+    exported = json.loads(store.export_channel_json("SecAudit", k_new))
+    assert exported["channel"] == "SecAudit"
+    assert exported["messages"][0]["plaintext"] == "Audit ready"
+    assert len(exported["messages"][0]["sha256_prefix"]) == 12
+
     store.clear_channel("SecAudit")
     assert len(store.load_messages("SecAudit")) == 0
     assert len(store.load_messages("Demo-Relay")) == 2

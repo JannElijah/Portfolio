@@ -3,6 +3,7 @@
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 import html as html_lib
+import math
 
 import altair as alt
 import folium
@@ -216,6 +217,61 @@ def fetch_tectonic_geojson() -> dict | None:
         return None
 
 
+def haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    """Compute great-circle distance in kilometers using Earth radius 6371.0 km."""
+    r = 6371.0
+    p1, p2 = math.radians(lat1), math.radians(lat2)
+    dp = math.radians(lat2 - lat1)
+    dl = math.radians(lon2 - lon1)
+    a = math.sin(dp / 2) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(dl / 2) ** 2
+    return round(2 * r * math.atan2(math.sqrt(a), math.sqrt(1 - a)), 1)
+
+
+def attach_nearest_city(quake_df: pd.DataFrame, cities: dict = CITIES) -> pd.DataFrame:
+    """Annotate each seismic event with its closest monitored city and distance (km)."""
+    if quake_df.empty:
+        return quake_df
+    df = quake_df.copy()
+    nearest_names: list[str] = []
+    nearest_dists: list[float] = []
+    for _, row in df.iterrows():
+        best_city = "N/A"
+        best_dist = float("inf")
+        for name, coords in cities.items():
+            dist = haversine_km(float(row["lat"]), float(row["lon"]), float(coords["lat"]), float(coords["lon"]))
+            if dist < best_dist:
+                best_dist = dist
+                best_city = name
+        nearest_names.append(best_city)
+        nearest_dists.append(best_dist if best_dist < float("inf") else 0.0)
+    df["nearest_city"] = nearest_names
+    df["nearest_km"] = nearest_dists
+    return df
+
+
+def compute_regional_alert_level(quake_df: pd.DataFrame, weather_df: pd.DataFrame) -> dict:
+    """Compute RED / AMBER / GREEN regional readiness status across seismic and heat metrics."""
+    max_mag = float(quake_df["magnitude"].max()) if (not quake_df.empty and "magnitude" in quake_df.columns) else 0.0
+    tiers = set(weather_df["heat_risk"].astype(str)) if (not weather_df.empty and "heat_risk" in weather_df.columns) else set()
+    if max_mag >= 5.0 or "Danger" in tiers or "Extreme Danger" in tiers:
+        return {
+            "level": "RED",
+            "color": "#ef4444",
+            "headline": f"HIGH ALERT — M {max_mag:.1f} peak seismic or Danger heat index detected.",
+        }
+    if max_mag >= 4.0 or "Extreme Caution" in tiers:
+        return {
+            "level": "AMBER",
+            "color": "#f59e0b",
+            "headline": f"ADVISORY WATCH — M {max_mag:.1f} peak activity / elevated heat index.",
+        }
+    return {
+        "level": "GREEN",
+        "color": "#10b981",
+        "headline": "NOMINAL OPS — All monitored seismic and heat metrics within baseline limits.",
+    }
+
+
 def create_map(quake_df: pd.DataFrame, weather_df: pd.DataFrame) -> folium.Map:
     m = folium.Map(
         location=[12.3, 122.0],
@@ -227,12 +283,14 @@ def create_map(quake_df: pd.DataFrame, weather_df: pd.DataFrame) -> folium.Map:
 
     plates = fetch_tectonic_geojson()
     if plates:
+        fg_plates = folium.FeatureGroup(name="Tectonic Plate Boundaries")
         folium.GeoJson(
             plates,
-            name="Tectonic Plate Boundaries",
             style_function=lambda _: {"color": "#f97316", "weight": 1.2, "opacity": 0.45},
-        ).add_to(m)
+        ).add_to(fg_plates)
+        fg_plates.add_to(m)
 
+    fg_quakes = folium.FeatureGroup(name="Seismic Activity (24h)")
     if not quake_df.empty:
         for _, row in quake_df.iterrows():
             color = "#14b8a6"
@@ -240,6 +298,7 @@ def create_map(quake_df: pd.DataFrame, weather_df: pd.DataFrame) -> folium.Map:
                 color = "#f59e0b"
             if row["magnitude"] >= 5.0:
                 color = "#ef4444"
+            dist_note = f" · {row['nearest_km']} km to {row['nearest_city']}" if "nearest_city" in row else ""
             folium.CircleMarker(
                 location=[row["lat"], row["lon"]],
                 radius=max(row["magnitude"] * 3.0, 5),
@@ -247,9 +306,11 @@ def create_map(quake_df: pd.DataFrame, weather_df: pd.DataFrame) -> folium.Map:
                 fill=True,
                 fill_color=color,
                 fill_opacity=0.7,
-                popup=f"M {row['magnitude']} | {row['place']} ({row['depth_km']} km)",
-            ).add_to(m)
+                popup=f"M {row['magnitude']} | {row['place']} ({row['depth_km']} km{dist_note})",
+            ).add_to(fg_quakes)
+    fg_quakes.add_to(m)
 
+    fg_weather = folium.FeatureGroup(name="City Heat & Weather")
     if not weather_df.empty:
         for _, row in weather_df.iterrows():
             html = (
@@ -267,8 +328,10 @@ def create_map(quake_df: pd.DataFrame, weather_df: pd.DataFrame) -> folium.Map:
                 location=[row["lat"], row["lon"]],
                 icon=folium.DivIcon(html=html),
                 tooltip=tooltip,
-            ).add_to(m)
+            ).add_to(fg_weather)
+    fg_weather.add_to(m)
 
+    folium.LayerControl(collapsed=False).add_to(m)
     return m
 
 
@@ -327,7 +390,7 @@ def main() -> None:
         selected_tiers = st.multiselect("Heat-Index Tiers", risk_options, default=risk_options)
 
         filtered_df = (
-            quake_df[quake_df["magnitude"] >= min_mag] if not quake_df.empty else pd.DataFrame()
+            attach_nearest_city(quake_df[quake_df["magnitude"] >= min_mag]) if not quake_df.empty else pd.DataFrame()
         )
         filtered_weather = filter_weather_by_risk(weather_df, selected_tiers)
 
@@ -336,11 +399,12 @@ def main() -> None:
         if not filtered_df.empty:
             for _, row in filtered_df.head(5).iterrows():
                 accent = "#ef4444" if row["magnitude"] >= 5.0 else "#f59e0b" if row["magnitude"] >= 4.0 else "#14b8a6"
+                city_tag = f" · {row['nearest_km']} km to {html_lib.escape(str(row['nearest_city']))}" if "nearest_city" in row else ""
                 st.markdown(
                     f"""
                     <div class="alert-card" style="border-left-color:{accent};">
-                        <strong style="color:{accent};">M {row['magnitude']}</strong> · {row['place']}<br>
-                        <small style="color:#94a3b8;">{row['time'].strftime('%I:%M %p PHT')} | Depth {row['depth_km']} km</small>
+                        <strong style="color:{accent};">M {row['magnitude']}</strong> · {html_lib.escape(str(row['place']))}<br>
+                        <small style="color:#94a3b8;">{row['time'].strftime('%I:%M %p PHT')} | Depth {row['depth_km']} km{city_tag}</small>
                     </div>
                     """,
                     unsafe_allow_html=True,
@@ -389,6 +453,13 @@ def main() -> None:
     m3.metric("Mean City Temp", f"{avg_temp:.1f}°C")
     m4.metric(f"Max Heat Index ({hottest_city})", f"{max_heat:.1f}°C", delta=risk_tier)
 
+    alert = compute_regional_alert_level(filtered_df, filtered_weather)
+    st.markdown(
+        f"<div style='border:1px solid {alert['color']};background:rgba(13,29,48,0.9);border-left:5px solid {alert['color']};padding:10px 14px;border-radius:6px;margin:8px 0 14px;'>"
+        f"<strong style='color:{alert['color']};font-family:monospace;'>READINESS: {alert['level']}</strong> — {html_lib.escape(alert['headline'])}</div>",
+        unsafe_allow_html=True,
+    )
+
     tab_map, tab_cities = st.tabs(["Geospatial Radar Map", "City Meteorological Matrix"])
     with tab_map:
         map_obj = create_map(filtered_df, filtered_weather)
@@ -419,18 +490,33 @@ def main() -> None:
 
     st.subheader("24-Hour Seismic Magnitude Timeline")
     if not filtered_df.empty:
-        chart = (
-            alt.Chart(filtered_df)
-            .mark_bar(width=22, cornerRadiusTopLeft=3, cornerRadiusTopRight=3)
-            .encode(
-                x=alt.X("time:T", title="Time (PHT)", axis=alt.Axis(format="%H:%M")),
-                y=alt.Y("magnitude:Q", title="Magnitude"),
-                color=alt.Color("magnitude:Q", scale=alt.Scale(domain=[2, 6.5], range=["#14b8a6", "#f59e0b", "#ef4444"]), legend=None),
-                tooltip=["place", "magnitude", "depth_km"],
+        c_tline, c_scatter = st.columns(2)
+        with c_tline:
+            chart = (
+                alt.Chart(filtered_df)
+                .mark_bar(width=20, cornerRadiusTopLeft=3, cornerRadiusTopRight=3)
+                .encode(
+                    x=alt.X("time:T", title="Time (PHT)", axis=alt.Axis(format="%H:%M")),
+                    y=alt.Y("magnitude:Q", title="Magnitude"),
+                    color=alt.Color("magnitude:Q", scale=alt.Scale(domain=[2, 6.5], range=["#14b8a6", "#f59e0b", "#ef4444"]), legend=None),
+                    tooltip=["place", "magnitude", "depth_km"],
+                )
+                .properties(height=220, background="transparent", title="Magnitude Timeline")
             )
-            .properties(height=220, background="transparent")
-        )
-        st.altair_chart(chart, use_container_width=True)
+            st.altair_chart(chart, use_container_width=True)
+        with c_scatter:
+            scatter = (
+                alt.Chart(filtered_df)
+                .mark_circle(size=90, opacity=0.85)
+                .encode(
+                    x=alt.X("depth_km:Q", title="Hypocenter Depth (km)"),
+                    y=alt.Y("magnitude:Q", title="Magnitude"),
+                    color=alt.Color("severity:N", scale=alt.Scale(domain=["NORMAL", "ADVISORY", "CRITICAL"], range=["#14b8a6", "#f59e0b", "#ef4444"])),
+                    tooltip=["place", "magnitude", "depth_km", "nearest_city", "nearest_km"],
+                )
+                .properties(height=220, background="transparent", title="Depth vs. Magnitude Risk")
+            )
+            st.altair_chart(scatter, use_container_width=True)
     else:
         st.info("No seismic activity detected in the current filter.")
 

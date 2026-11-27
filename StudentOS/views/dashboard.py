@@ -215,17 +215,33 @@ class DashboardView(ft.Container):
         ], spacing=15)
 
         # Time blocks container
+        self.priority_filter = ft.Dropdown(
+            value="All",
+            width=150,
+            dense=True,
+            options=[
+                ft.dropdown.Option("All"),
+                ft.dropdown.Option("High"),
+                ft.dropdown.Option("Medium"),
+                ft.dropdown.Option("Low"),
+                ft.dropdown.Option("Pending Only"),
+            ],
+            on_change=lambda e: self.refresh_data(update_ui=False),
+        )
         time_blocks_card = ft.Card(
             content=ft.Container(
                 content=ft.Column([
                     ft.Row([
-                        ft.Icon(ft.Icons.CALENDAR_TODAY, color=ft.Colors.BLUE_400),
-                        ft.Text(
-                            f"Today's Schedule - {datetime.now().strftime('%B %d, %Y')}",
-                            size=18,
-                            weight=ft.FontWeight.BOLD,
-                        ),
-                    ], spacing=10),
+                        ft.Row([
+                            ft.Icon(ft.Icons.CALENDAR_TODAY, color=ft.Colors.BLUE_400),
+                            ft.Text(
+                                f"Today's Schedule - {datetime.now().strftime('%B %d, %Y')}",
+                                size=18,
+                                weight=ft.FontWeight.BOLD,
+                            ),
+                        ], spacing=10),
+                        self.priority_filter,
+                    ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
                     ft.Divider(),
                     self.rows_col,
                 ]),
@@ -268,9 +284,11 @@ class DashboardView(ft.Container):
             self.rows_col.controls.append(UIHelpers.create_loading_indicator("Loading dashboard..."))
             self.update()
         
+        self.rows_col.controls.clear()
         # Get existing tasks for today
         tasks = self.db.get_tasks_for_today()
         task_map = {row[1]: (row[2], row[3], row[4]) for row in tasks}  # time_slot -> (name, status, priority)
+        active_filter = self.priority_filter.value if hasattr(self, "priority_filter") else "All"
 
         # Generate rows from 8:00 AM to 10:00 PM
         start_hour = 8
@@ -292,7 +310,12 @@ class DashboardView(ft.Container):
                         completed += 1
                     else:
                         pending += 1
-            
+
+            if active_filter in {"High", "Medium", "Low"} and (not task_name or priority != active_filter):
+                continue
+            if active_filter == "Pending Only" and (not task_name or status == "completed"):
+                continue
+
             row = TimeBlockRow(
                 time_slot=time_slot,
                 task_name=task_name,
@@ -303,15 +326,8 @@ class DashboardView(ft.Container):
             self.rows_col.controls.append(row)
         
         # Update stats
-        self.completed_count.value = str(completed)
-        self.pending_count.value = str(pending)
-        
+        self._apply_task_counts(completed, pending)
         total_tasks = completed + pending
-        if total_tasks > 0:
-            productivity = int((completed / total_tasks) * 100)
-            self.productivity_text.value = f"{productivity}%"
-        else:
-            self.productivity_text.value = "0%"
         
         # Update streak
         current_streak, longest_streak = self.db.get_study_streak()
@@ -324,11 +340,29 @@ class DashboardView(ft.Container):
             # Show success message for dashboard refresh
             if hasattr(self, 'page') and self.page:
                 show_success(self.page, f"Dashboard updated - {total_tasks} tasks loaded")
+        if hasattr(self, 'page') and self.page:
             self.update()
+
+    def _apply_task_counts(self, completed: int, pending: int) -> None:
+        self.completed_count.value = str(completed)
+        self.pending_count.value = str(pending)
+        total_tasks = completed + pending
+        self.productivity_text.value = f"{int((completed / total_tasks) * 100)}%" if total_tasks > 0 else "0%"
+
+    def _recompute_task_counters(self) -> None:
+        tasks = self.db.get_tasks_for_today()
+        completed = sum(1 for row in tasks if row[2] and row[3] == "completed")
+        pending = sum(1 for row in tasks if row[2] and row[3] != "completed")
+        self._apply_task_counts(completed, pending)
+        if hasattr(self, "page") and self.page:
+            self.completed_count.update()
+            self.pending_count.update()
+            self.productivity_text.update()
 
     def save_task(self, time_slot, task_name, status, priority="Medium"):
         """Save task changes to database"""
         self.db.add_task(time_slot, task_name, status, priority)
+        self._recompute_task_counters()
     
     def create_analytics_card(self, title, content):
         """Create an analytics card"""
