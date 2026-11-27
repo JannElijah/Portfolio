@@ -5,29 +5,91 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>MailPilot AI — Email Triage &amp; Reply Automation</title>
   <style>
-    :root { --bg:#090b14; --panel:#111526; --border:#232b47; --indigo:#6366f1; --sky:#38bdf8; --ok:#10b981; --p1:#f43f5e; --p2:#f59e0b; --text:#f4f4f5; --muted:#94a3b8; }
-    * { box-sizing:border-box; font-family:Inter,system-ui,sans-serif; }
-    body { margin:0; background:var(--bg); color:var(--text); padding:20px 28px; }
-    .top { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; border-bottom:1px solid var(--border); padding-bottom:12px; margin-bottom:16px; }
-    h1 { margin:0; font-size:1.3rem; }
-    .sub { color:var(--muted); font-size:0.8rem; margin-top:2px; }
-    .kpis { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:16px; }
-    .kpi { background:var(--panel); border:1px solid var(--border); border-radius:9px; padding:12px 14px; }
-    .lbl { font-size:0.68rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.05em; }
+    :root {
+      --bg:#080a12; --panel:#101424; --panel-2:#0c101d; --border:#212944;
+      --indigo:#6366f1; --sky:#38bdf8; --ok:#10b981; --p1:#f43f5e; --p2:#f59e0b;
+      --text:#f4f4f5; --muted:#94a3b8;
+    }
+    * { box-sizing:border-box; font-family:Inter,system-ui,-apple-system,sans-serif; }
+    body {
+      margin:0;
+      background:radial-gradient(1200px 500px at 85% -10%, rgba(99,102,241,0.12), transparent), var(--bg);
+      color:var(--text);
+      padding:20px 26px;
+    }
+    .top {
+      display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap;
+      gap:12px; border-bottom:1px solid var(--border); padding-bottom:14px; margin-bottom:16px;
+    }
+    h1 { margin:0; font-size:1.3rem; letter-spacing:-0.02em; }
+    .sub { color:var(--muted); font-size:0.8rem; margin-top:3px; }
+    .top-actions { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+    .kpis { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:14px; }
+    .kpi {
+      background:linear-gradient(180deg, rgba(255,255,255,0.02), transparent), var(--panel);
+      border:1px solid var(--border); border-radius:10px; padding:12px 14px;
+    }
+    .lbl { font-size:0.68rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.06em; }
     .val { font-size:1.35rem; font-weight:700; margin-top:4px; font-family:ui-monospace,monospace; }
+    .toolbar {
+      display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap;
+      gap:10px; margin-bottom:14px;
+    }
+    .pills { display:flex; gap:6px; flex-wrap:wrap; }
+    .tab-pill {
+      background:var(--panel); border:1px solid var(--border); color:var(--muted);
+      padding:5px 11px; border-radius:999px; font-size:0.74rem; font-weight:600; cursor:pointer;
+    }
+    .tab-pill.active { background:var(--indigo); border-color:var(--indigo); color:#fff; }
+    .search {
+      background:var(--panel); border:1px solid var(--border); color:var(--text);
+      border-radius:8px; padding:6px 11px; font-size:0.78rem; width:250px; max-width:100%;
+    }
     .grid { display:grid; grid-template-columns:0.95fr 1.05fr; gap:16px; }
-    .panel { background:var(--panel); border:1px solid var(--border); border-radius:10px; padding:15px; }
-    .mail-item { border:1px solid var(--border); background:#0c101e; border-radius:8px; padding:10px 12px; margin-bottom:8px; cursor:pointer; }
-    .mail-item.active { border-color:var(--sky); background:#131a30; }
-    .pill { display:inline-block; padding:2px 7px; border-radius:999px; font-family:monospace; font-size:0.68rem; font-weight:700; }
+    .panel { background:var(--panel); border:1px solid var(--border); border-radius:10px; padding:15px; min-width:0; }
+    .mail-item {
+      border:1px solid var(--border); background:var(--panel-2); border-radius:8px;
+      padding:10px 12px; margin-bottom:8px; cursor:pointer; transition:border-color 0.15s, background 0.15s;
+    }
+    .mail-item:hover { border-color:#3b4978; }
+    .mail-item.active { border-color:var(--sky); background:#131b32; }
+    .pill { display:inline-block; padding:2px 8px; border-radius:999px; font-family:ui-monospace,monospace; font-size:0.68rem; font-weight:700; }
     .P1 { background:rgba(244,63,94,0.16); color:#fb7185; }
     .P2 { background:rgba(245,158,11,0.16); color:#fbbf24; }
     .P3 { background:rgba(56,189,248,0.16); color:#7dd3fc; }
-    textarea { width:100%; min-height:140px; background:#090c17; color:var(--text); border:1px solid var(--border); border-radius:8px; padding:10px; font-size:0.82rem; line-height:1.45; }
-    button { background:var(--indigo); color:#fff; border:0; padding:8px 13px; border-radius:6px; font-weight:600; font-size:0.78rem; cursor:pointer; }
-    button.sec { background:#181e36; border:1px solid var(--border); color:var(--sky); }
-    button.ok { background:#065f46; border:1px solid var(--ok); }
+    textarea, input.inp {
+      width:100%; background:#080b14; color:var(--text); border:1px solid var(--border);
+      border-radius:8px; padding:9px 10px; font-size:0.81rem; line-height:1.45;
+    }
+    textarea { min-height:132px; resize:vertical; }
+    button {
+      background:var(--indigo); color:#fff; border:0; padding:7px 12px; border-radius:7px;
+      font-weight:600; font-size:0.77rem; cursor:pointer;
+    }
+    button:hover { filter:brightness(1.08); }
+    button.sec { background:#171d33; border:1px solid var(--border); color:var(--sky); }
+    button.ok { background:#065f46; border:1px solid var(--ok); color:#ecfdf5; }
+    .tone-row { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; margin:8px 0 6px; }
+    .tone-btn { background:#0c101d; border:1px solid var(--border); color:var(--muted); padding:3px 9px; font-size:0.71rem; border-radius:6px; }
+    .tone-btn.active { border-color:var(--sky); color:var(--sky); background:#131b32; }
     ul { margin:6px 0 12px 18px; padding:0; font-size:0.8rem; color:#cbd5e1; }
+    .outbox-card { border:1px solid var(--border); background:var(--panel-2); border-radius:8px; padding:11px 13px; margin-bottom:9px; }
+    .modal-bg {
+      position:fixed; inset:0; background:rgba(0,0,0,0.75); display:none;
+      align-items:center; justify-content:center; padding:18px; z-index:40; backdrop-filter:blur(3px);
+    }
+    .modal-bg.open { display:flex; }
+    .modal { width:100%; max-width:520px; background:var(--panel); border:1px solid #33406b; border-radius:12px; padding:18px; }
+    .field-lbl { display:block; font-size:0.72rem; color:var(--muted); margin:9px 0 4px; text-transform:uppercase; }
+    .row-2 { display:grid; grid-template-columns:1fr 110px; gap:10px; }
+    .toast {
+      position:fixed; right:20px; bottom:20px; background:#0f172a; border:1px solid var(--sky);
+      color:#e2e8f0; padding:9px 14px; border-radius:8px; font-size:0.78rem; display:none; z-index:50;
+    }
+    @media (max-width: 900px) {
+      .kpis { grid-template-columns:repeat(2,1fr); }
+      .grid { grid-template-columns:1fr; }
+    }
   </style>
 </head>
 <body>
@@ -36,15 +98,27 @@
       <h1>MailPilot AI — Email Client &amp; Draft Automation</h1>
       <div class="sub">IMAP/SMTP TLS Config · Gemini / NLP Intent Classifier · Human-in-the-Loop Outbox</div>
     </div>
-    <div style="display:flex;gap:8px;align-items:center;">
-      <span class="pill" style="background:rgba(16,185,129,0.15);color:#34d399;border:1px solid rgba(16,185,129,0.4);">IMAPS:993 · STARTTLS:587 OK</span>
-      <button class="sec" onclick="simulateEmail()">+ Ingest Sample Email</button>
+    <div class="top-actions">
+      <span id="tlsStatusPill" class="pill" style="background:rgba(16,185,129,0.15);color:#34d399;border:1px solid rgba(16,185,129,0.4);">IMAPS:993 · STARTTLS:587 OK</span>
+      <button class="sec" onclick="openConfigModal()">Verify Mail Client</button>
+      <button onclick="openIngestModal()">+ Ingest Email</button>
     </div>
   </div>
 
   <div class="kpis" id="kpis"></div>
 
-  <div class="grid">
+  <div class="toolbar">
+    <div class="pills" id="filterPills">
+      <button class="tab-pill active" onclick="setFilter('ALL', this)">All Inbox</button>
+      <button class="tab-pill" onclick="setFilter('P1', this)">P1 Urgent</button>
+      <button class="tab-pill" onclick="setFilter('PENDING', this)">Pending Review</button>
+      <button class="tab-pill" onclick="setFilter('SENT', this)">Sent</button>
+      <button class="tab-pill" onclick="setFilter('OUTBOX', this)">Outbox Audit Log</button>
+    </div>
+    <input id="searchBox" class="search" placeholder="Filter by sender, subject, or category..." oninput="renderView()" />
+  </div>
+
+  <div id="inboxGrid" class="grid">
     <div class="panel">
       <h2 style="margin:0 0 10px;font-size:0.95rem;">Prioritized AI Triage Queue</h2>
       <div id="inboxList"></div>
@@ -52,15 +126,91 @@
     <div class="panel" id="detailPanel"></div>
   </div>
 
+  <div id="outboxPanel" class="panel" style="display:none;">
+    <h2 style="margin:0 0 10px;font-size:0.95rem;">Approved Outbox Dispatch Audit Trail</h2>
+    <div id="outboxList"></div>
+  </div>
+
+  <div id="ingestModal" class="modal-bg" onclick="closeModals()">
+    <div class="modal" onclick="event.stopPropagation()">
+      <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border);padding-bottom:8px;">
+        <strong>Ingest &amp; Classify Raw Email</strong>
+        <button class="sec" onclick="closeModals()">Close</button>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;">
+        <button class="tone-btn" onclick="fillPreset('incident')">Preset: 502 / SSL Outage</button>
+        <button class="tone-btn" onclick="fillPreset('maintenance')">Preset: SEO / Landing Fix</button>
+        <button class="tone-btn" onclick="fillPreset('billing')">Preset: Server Renewal Invoice</button>
+      </div>
+      <label class="field-lbl">Sender</label>
+      <input id="ingSender" class="inp" value="client-lead@makati-corp.ph" />
+      <label class="field-lbl">Subject</label>
+      <input id="ingSubject" class="inp" value="Urgent: Website SSL warning on production landing page" />
+      <label class="field-lbl">Body</label>
+      <textarea id="ingBody" style="min-height:95px;">Users report an SSL timeout error on our main marketing domain after today's deployment.</textarea>
+      <div style="margin-top:12px;display:flex;justify-content:flex-end;">
+        <button onclick="submitIngest()">Classify &amp; Add to Queue</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="configModal" class="modal-bg" onclick="closeModals()">
+    <div class="modal" onclick="event.stopPropagation()">
+      <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border);padding-bottom:8px;">
+        <strong>IMAP / SMTP Client TLS Validator</strong>
+        <button class="sec" onclick="closeModals()">Close</button>
+      </div>
+      <div style="display:flex;gap:6px;margin-top:10px;">
+        <button class="tone-btn" onclick="fillMailCfg(true)">Preset: Secure TLS (993/587)</button>
+        <button class="tone-btn" onclick="fillMailCfg(false)">Preset: Insecure Plaintext (143/25)</button>
+      </div>
+      <label class="field-lbl">Work Email</label>
+      <input id="cfgEmail" class="inp" value="jann.limpiado@ops-team.ph" />
+      <div class="row-2">
+        <div><label class="field-lbl">IMAP Host</label><input id="cfgImapHost" class="inp" value="imap.gmail.com" /></div>
+        <div><label class="field-lbl">Port</label><input id="cfgImapPort" class="inp" value="993" /></div>
+      </div>
+      <div class="row-2">
+        <div><label class="field-lbl">SMTP Host</label><input id="cfgSmtpHost" class="inp" value="smtp.gmail.com" /></div>
+        <div><label class="field-lbl">Port</label><input id="cfgSmtpPort" class="inp" value="587" /></div>
+      </div>
+      <label style="display:flex;align-items:center;gap:8px;margin-top:10px;font-size:0.8rem;">
+        <input id="cfgTls" type="checkbox" checked /> Enforce IMAPS / STARTTLS Encryption
+      </label>
+      <div id="cfgResult" style="margin-top:10px;font-size:0.78rem;background:#080b14;border:1px solid var(--border);border-radius:8px;padding:10px;"></div>
+      <div style="margin-top:12px;display:flex;justify-content:flex-end;">
+        <button onclick="validateClient()">Run Profile Audit</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast"></div>
+
 <script>
+const esc = (s) => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 let emails = [];
+let outbox = [];
 let selectedId = null;
+let activeFilter = 'ALL';
+let activeTone = 'Formal';
+
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.display = 'block';
+  clearTimeout(window.__mpToast);
+  window.__mpToast = setTimeout(() => { t.style.display = 'none'; }, 2400);
+}
 
 async function refresh() {
-  const res = await fetch('/api/emails');
-  const data = await res.json();
-  emails = data.emails;
-  if (!selectedId && emails.length) selectedId = emails[0].id;
+  const [emRes, obRes] = await Promise.all([fetch('/api/emails'), fetch('/api/outbox')]);
+  const data = await emRes.json();
+  const obData = await obRes.json();
+  emails = data.emails || [];
+  outbox = obData.outbox || [];
+  if ((!selectedId || !emails.some(x => x.id === selectedId)) && emails.length) {
+    selectedId = emails[0].id;
+  }
 
   const p1Count = emails.filter(e => e.priority === 'P1').length;
   const pendingCount = emails.filter(e => e.status === 'PENDING_REVIEW').length;
@@ -70,67 +220,190 @@ async function refresh() {
     <div class="kpi"><div class="lbl">Pending Review</div><div class="val" style="color:#38bdf8;">${pendingCount}</div></div>
     <div class="kpi"><div class="lbl">Sent via Outbox</div><div class="val" style="color:#34d399;">${data.outbox_sent}</div></div>
   `;
+  renderView();
+}
 
-  document.getElementById('inboxList').innerHTML = emails.map(e => `
+function setFilter(f, el) {
+  activeFilter = f;
+  document.querySelectorAll('#filterPills .tab-pill').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  renderView();
+}
+
+function renderView() {
+  const q = (document.getElementById('searchBox').value || '').trim().toLowerCase();
+  const showOutbox = activeFilter === 'OUTBOX';
+  document.getElementById('inboxGrid').style.display = showOutbox ? 'none' : 'grid';
+  document.getElementById('outboxPanel').style.display = showOutbox ? 'block' : 'none';
+
+  if (showOutbox) {
+    const filteredOb = outbox.filter(o =>
+      !q || [o.recipient, o.subject, o.sent_body, o.approved_by].join(' ').toLowerCase().includes(q)
+    );
+    document.getElementById('outboxList').innerHTML = filteredOb.length ? filteredOb.map(o => `
+      <div class="outbox-card">
+        <div style="display:flex;justify-content:space-between;gap:8px;font-size:0.78rem;">
+          <strong>${esc(o.subject)}</strong>
+          <span class="pill" style="background:rgba(16,185,129,0.15);color:#34d399;">SENT · ${esc(String(o.sent_at).slice(0,19).replace('T',' '))}</span>
+        </div>
+        <div style="font-size:0.74rem;color:var(--muted);margin:3px 0 6px;">To: ${esc(o.recipient)} · Approved by ${esc(o.approved_by)}</div>
+        <pre style="margin:0;white-space:pre-wrap;font-size:0.78rem;color:#cbd5e1;font-family:inherit;">${esc(o.sent_body)}</pre>
+      </div>
+    `).join('') : '<div style="color:var(--muted);font-size:0.82rem;">No approved dispatches yet — approve a draft in Inbox to log it here.</div>';
+    return;
+  }
+
+  const visible = emails.filter(e => {
+    if (activeFilter === 'P1' && e.priority !== 'P1') return false;
+    if (activeFilter === 'PENDING' && e.status !== 'PENDING_REVIEW') return false;
+    if (activeFilter === 'SENT' && e.status !== 'SENT') return false;
+    if (q && ![e.sender, e.subject, e.category, e.body].join(' ').toLowerCase().includes(q)) return false;
+    return true;
+  });
+
+  if (visible.length && !visible.some(x => x.id === selectedId)) selectedId = visible[0].id;
+
+  document.getElementById('inboxList').innerHTML = visible.length ? visible.map(e => `
     <div class="mail-item ${e.id === selectedId ? 'active' : ''}" onclick="selectEmail(${e.id})">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
-        <span class="pill ${e.priority}">${e.priority} · ${e.category}</span>
-        <span style="font-family:monospace;font-size:0.7rem;color:${e.status === 'SENT' ? '#34d399' : '#94a3b8'};">${e.status}</span>
+        <span class="pill ${esc(e.priority)}">${esc(e.priority)} · ${esc(e.category)}</span>
+        <span style="font-family:monospace;font-size:0.7rem;color:${e.status === 'SENT' ? '#34d399' : '#94a3b8'};">${esc(e.status)}</span>
       </div>
-      <div style="font-weight:600;font-size:0.86rem;">${e.subject}</div>
-      <div style="font-size:0.74rem;color:var(--muted);margin-top:2px;">From ${e.sender} · Confidence ${(e.confidence * 100).toFixed(0)}%</div>
+      <div style="font-weight:600;font-size:0.86rem;">${esc(e.subject)}</div>
+      <div style="font-size:0.74rem;color:var(--muted);margin-top:2px;">From ${esc(e.sender)} · Confidence ${(e.confidence * 100).toFixed(0)}%</div>
     </div>
-  `).join('');
+  `).join('') : '<div style="color:var(--muted);font-size:0.82rem;padding:12px;">No messages match your filter.</div>';
 
-  renderDetail();
+  renderDetail(visible);
 }
 
 function selectEmail(id) {
   selectedId = id;
-  refresh();
+  renderView();
 }
 
-function renderDetail() {
+function applyTone(tone, e) {
+  activeTone = tone;
+  const actions = (e.action_items || []).map(a => `- ${a}`).join('\n');
+  if (tone === 'Concise') {
+    return `Hi,\n\nReceived regarding "${e.subject}" (${e.priority} · ${e.category}). Next steps in progress:\n${actions}\n\nWe will update you shortly.\n\nBest,\nJann`;
+  }
+  if (tone === 'Technical') {
+    return `Hello,\n\nTicket triaged as ${e.priority} (${e.category}, engine: ${e.engine}). Execution checklist:\n${actions}\n\nVerification telemetry and logs will follow upon completion.\n\nRegards,\nJann Limpiado · Engineering Support`;
+  }
+  return e.draft_reply;
+}
+
+function setTone(tone) {
   const e = emails.find(x => x.id === selectedId) || emails[0];
   if (!e) return;
+  activeTone = tone;
+  document.getElementById('replyBox').value = applyTone(tone, e);
+  document.querySelectorAll('.tone-switch').forEach(b => b.classList.toggle('active', b.dataset.tone === tone));
+}
+
+function renderDetail(visibleList) {
+  const e = (visibleList && visibleList.find(x => x.id === selectedId)) || (visibleList && visibleList[0]) || emails[0];
+  if (!e) { document.getElementById('detailPanel').innerHTML = ''; return; }
   document.getElementById('detailPanel').innerHTML = `
-    <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border);padding-bottom:8px;">
-      <strong style="font-size:0.95rem;">${e.subject}</strong>
-      <span style="font-family:monospace;font-size:0.72rem;color:#818cf8;">${e.engine}</span>
+    <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border);padding-bottom:8px;gap:8px;">
+      <strong style="font-size:0.95rem;">${esc(e.subject)}</strong>
+      <span style="font-family:monospace;font-size:0.72rem;color:#818cf8;white-space:nowrap;">${esc(e.engine)}</span>
     </div>
-    <p style="font-size:0.8rem;color:#cbd5e1;line-height:1.45;margin:10px 0;">${e.body}</p>
+    <div style="font-size:0.74rem;color:var(--muted);margin-top:6px;">Sender: <code style="color:#cbd5e1;">${esc(e.sender)}</code></div>
+    <p style="font-size:0.8rem;color:#cbd5e1;line-height:1.5;margin:10px 0;">${esc(e.body)}</p>
     <div style="font-size:0.72rem;color:var(--muted);text-transform:uppercase;">Extracted Action Items</div>
-    <ul>${e.action_items.map(a => `<li>${a}</li>`).join('')}</ul>
-    <div style="font-size:0.72rem;color:var(--muted);text-transform:uppercase;margin-bottom:6px;">AI Generated Reply Draft</div>
-    <textarea id="replyBox">${e.draft_reply}</textarea>
-    <div style="margin-top:10px;display:flex;justify-content:flex-end;">
+    <ul>${(e.action_items || []).map(a => `<li>${esc(a)}</li>`).join('')}</ul>
+    <div class="tone-row">
+      <div style="font-size:0.72rem;color:var(--muted);text-transform:uppercase;">AI Reply Draft</div>
+      <div style="display:flex;gap:5px;">
+        <button class="tone-btn tone-switch ${activeTone==='Formal'?'active':''}" data-tone="Formal" onclick="setTone('Formal')">Formal</button>
+        <button class="tone-btn tone-switch ${activeTone==='Concise'?'active':''}" data-tone="Concise" onclick="setTone('Concise')">Concise</button>
+        <button class="tone-btn tone-switch ${activeTone==='Technical'?'active':''}" data-tone="Technical" onclick="setTone('Technical')">Technical</button>
+      </div>
+    </div>
+    <textarea id="replyBox">${esc(applyTone(activeTone, e))}</textarea>
+    <div style="margin-top:10px;display:flex;justify-content:space-between;gap:8px;">
+      <button class="sec" onclick="copyDraft()">Copy Draft</button>
       <button class="ok" onclick="approveSend(${e.id})">Approve &amp; Queue to Outbox</button>
     </div>
   `;
 }
 
-async function approveSend(id) {
-  const draft_reply = document.getElementById('replyBox').value;
-  await fetch('/api/emails/' + id + '/approve', {
-    method: 'POST',
-    headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({draft_reply})
-  });
-  await refresh();
+async function copyDraft() {
+  const txt = document.getElementById('replyBox').value;
+  try { await navigator.clipboard.writeText(txt); toast('Reply draft copied.'); } catch { toast('Draft ready to copy.'); }
 }
 
-async function simulateEmail() {
-  await fetch('/api/emails/ingest', {
-    method: 'POST',
-    headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({
-      sender: 'client-lead@makati-corp.ph',
-      subject: 'Urgent: Website SSL warning on production landing page',
-      body: 'Users report an SSL timeout error on our main marketing domain.'
-    })
+async function approveSend(id) {
+  const draft_reply = document.getElementById('replyBox').value;
+  const res = await fetch('/api/emails/' + id + '/approve', {
+    method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({draft_reply})
   });
-  selectedId = null;
-  await refresh();
+  if (res.ok) { toast('Reply approved and logged to Outbox.'); await refresh(); }
+}
+
+function openIngestModal() { document.getElementById('ingestModal').classList.add('open'); }
+function openConfigModal() { document.getElementById('configModal').classList.add('open'); validateClient(); }
+function closeModals() {
+  document.getElementById('ingestModal').classList.remove('open');
+  document.getElementById('configModal').classList.remove('open');
+}
+
+function fillPreset(kind) {
+  const map = {
+    incident: ['sre-alerts@makati-corp.ph', 'Urgent: 502 timeout on payment webhook', 'Gateway reports HTTP 502 error spikes and latency degradation in prod.'],
+    maintenance: ['marketing@partner.ph', 'Website maintenance: fix broken og:image and sitemap', 'Please inspect our portfolio HTML metadata, broken links, and GitHub CI workflow.'],
+    billing: ['finance@cloudvendor.ph', 'Invoice #2026-991 billing quote for PostgreSQL cluster', 'Attached is the monthly payment invoice and renewal receipt.']
+  };
+  const [s, sub, b] = map[kind];
+  document.getElementById('ingSender').value = s;
+  document.getElementById('ingSubject').value = sub;
+  document.getElementById('ingBody').value = b;
+}
+
+async function submitIngest() {
+  const sender = document.getElementById('ingSender').value;
+  const subject = document.getElementById('ingSubject').value;
+  const body = document.getElementById('ingBody').value;
+  const res = await fetch('/api/emails/ingest', {
+    method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({sender, subject, body})
+  });
+  if (res.ok) {
+    const created = await res.json();
+    selectedId = created.email.id;
+    closeModals();
+    toast('Email ingested and classified.');
+    await refresh();
+  }
+}
+
+function fillMailCfg(secure) {
+  document.getElementById('cfgImapPort').value = secure ? '993' : '143';
+  document.getElementById('cfgSmtpPort').value = secure ? '587' : '25';
+  document.getElementById('cfgTls').checked = secure;
+  validateClient();
+}
+
+async function validateClient() {
+  const payload = {
+    email: document.getElementById('cfgEmail').value,
+    imap_host: document.getElementById('cfgImapHost').value,
+    imap_port: Number(document.getElementById('cfgImapPort').value || 993),
+    smtp_host: document.getElementById('cfgSmtpHost').value,
+    smtp_port: Number(document.getElementById('cfgSmtpPort').value || 587),
+    use_tls: document.getElementById('cfgTls').checked,
+  };
+  const res = await fetch('/api/config/validate', {
+    method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload)
+  });
+  const data = await res.json();
+  const pill = document.getElementById('tlsStatusPill');
+  pill.textContent = `IMAPS:${payload.imap_port} · SMTP:${payload.smtp_port} ${data.valid ? 'OK' : 'WARN'}`;
+  pill.style.color = data.valid ? '#34d399' : '#fb7185';
+  document.getElementById('cfgResult').innerHTML = data.valid
+    ? `<strong style="color:#34d399;">PASS — TLS Enforced (${esc(data.imap_endpoint)} / ${esc(data.smtp_endpoint)})</strong>`
+    : `<strong style="color:#fb7185;">FAIL (${data.issues.length} issue(s)):</strong><ul style="margin:6px 0 0 16px;">${data.issues.map(i => `<li>${esc(i)}</li>`).join('')}</ul>`;
 }
 
 refresh();

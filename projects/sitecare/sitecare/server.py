@@ -6,11 +6,14 @@ import json
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
+from urllib.parse import parse_qs, urlparse
 
 from sitecare.auditor import audit_static_site, generate_sitemap_xml, inspect_github_workflows_and_git
 
 STATIC_HTML = Path(__file__).parent / "static" / "index.html"
 DEFAULT_WORKSPACE = Path(__file__).resolve().parents[3]
+DEFAULT_BASE_URL = "https://jann-limpiado-portfolio.vercel.app"
+SITEMAP_ROUTES = ["/", "/#projects", "/#additional-work", "/#skills", "/#credentials"]
 
 
 def create_server(
@@ -36,8 +39,14 @@ def create_server(
             self.end_headers()
             self.wfile.write(encoded)
 
+        def _resolve_base_url(self, query: str) -> str:
+            qs = parse_qs(query)
+            candidate = (qs.get("base_url", [DEFAULT_BASE_URL])[0] or "").strip()
+            return candidate if candidate.startswith(("http://", "https://")) else DEFAULT_BASE_URL
+
         def do_GET(self) -> None:
-            if self.path in {"/", "/index.html"}:
+            parsed = urlparse(self.path)
+            if parsed.path in {"/", "/index.html"}:
                 html_bytes = STATIC_HTML.read_bytes()
                 self.send_response(200)
                 self.send_header("Content-Type", "text/html; charset=utf-8")
@@ -46,11 +55,23 @@ def create_server(
                 self.wfile.write(html_bytes)
                 return
 
-            if self.path == "/api/audit":
+            if parsed.path == "/api/audit":
+                base_url = self._resolve_base_url(parsed.query)
                 audit = audit_static_site(dist_dir, target_repo / "public")
                 git_info = inspect_github_workflows_and_git(target_repo)
-                sitemap = generate_sitemap_xml("https://jannlimpiado.vercel.app", ["/", "/#projects", "/#skills", "/#credentials"])
-                self._send_json(200, {"audit": audit, "git_ci": git_info, "sitemap_xml": sitemap})
+                sitemap = generate_sitemap_xml(base_url, SITEMAP_ROUTES)
+                self._send_json(200, {"audit": audit, "git_ci": git_info, "sitemap_xml": sitemap, "base_url": base_url})
+                return
+
+            if parsed.path == "/api/sitemap.xml":
+                base_url = self._resolve_base_url(parsed.query)
+                xml_bytes = generate_sitemap_xml(base_url, SITEMAP_ROUTES).encode("utf-8")
+                self.send_response(200)
+                self.send_header("Content-Type", "application/xml; charset=utf-8")
+                self.send_header("Content-Disposition", "attachment; filename=sitemap.xml")
+                self.send_header("Content-Length", str(len(xml_bytes)))
+                self.end_headers()
+                self.wfile.write(xml_bytes)
                 return
 
             self._send_json(404, {"error": "Not found"})

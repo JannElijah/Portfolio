@@ -117,17 +117,24 @@ def create_gateway_server(
 
             if self.path == "/api/overview":
                 probes = [probe_http_target(name, url) for name, url in routes.items()]
-                elapsed = (time.perf_counter() - t0) * 1000.0
                 if metrics.total_requests == 0:
                     metrics.record("GET", "/proxy/auth-api", "auth-api", 200, 1.4)
                     metrics.record("GET", "/proxy/dms-core", "dms-core", 200, 1.8)
                     metrics.record("GET", "/proxy/wafer-api", "wafer-api", 200, 1.1)
+                summary = metrics.summary()
+                ok_2xx = max(0, summary["total_requests"] - summary["rate_limited_429"] - summary["errors_5xx"])
                 self._send_json(
                     200,
                     {
-                        "metrics": metrics.summary(),
+                        "metrics": summary,
+                        "status_breakdown": {
+                            "2xx": ok_2xx,
+                            "429": summary["rate_limited_429"],
+                            "5xx": summary["errors_5xx"],
+                        },
                         "upstreams": probes,
                         "nginx_audit": nginx_audit,
+                        "nginx_conf_source": conf_file.read_text(encoding="utf-8") if conf_file.exists() else "",
                     },
                 )
                 return
@@ -191,6 +198,10 @@ def create_gateway_server(
                         throttled += 1
                         metrics.record("GET", "/proxy/auth-api", "rate-limiter", 429, 0.2)
                 self._send_json(200, {"allowed": allowed, "rate_limited_429": throttled})
+                return
+            if self.path == "/api/reset-metrics":
+                metrics.reset()
+                self._send_json(200, {"ok": True})
                 return
             self._send_json(404, {"error": "Not found"})
 

@@ -5,42 +5,52 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>EdgeOps — Reverse Proxy &amp; Container Health Stack</title>
   <style>
-    :root { --bg: #08090f; --panel: #101320; --border: #1f263b; --violet: #8b5cf6; --cyan: #22d3ee; --ok: #10b981; --warn: #f59e0b; --bad: #f43f5e; --text: #f4f4f5; --muted: #94a3b8; }
-    * { box-sizing: border-box; font-family: Inter, system-ui, sans-serif; }
-    body { margin: 0; background: var(--bg); color: var(--text); padding: 24px 32px; }
-    .top { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 14px; margin-bottom: 20px; }
-    h1 { margin: 0; font-size: 1.35rem; letter-spacing: -0.02em; }
-    .sub { color: var(--muted); font-size: 0.82rem; margin-top: 2px; }
-    .actions { display: flex; gap: 8px; }
-    button { background: var(--violet); color: #fff; border: 0; padding: 8px 13px; border-radius: 6px; font-weight: 600; font-size: 0.78rem; cursor: pointer; }
-    button.sec { background: #161b2e; border: 1px solid #2b3556; color: var(--cyan); }
-    .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 18px; }
-    .kpi { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; }
-    .lbl { font-size: 0.7rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
-    .val { font-size: 1.45rem; font-weight: 700; margin-top: 5px; font-family: ui-monospace, monospace; }
-    .grid { display: grid; grid-template-columns: 1.15fr 0.85fr; gap: 18px; }
-    .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 16px; }
-    .panel h2 { margin: 0 0 12px; font-size: 0.95rem; }
-    table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
-    th { text-align: left; color: var(--muted); font-size: 0.7rem; text-transform: uppercase; border-bottom: 1px solid var(--border); padding: 6px 8px; }
-    td { border-bottom: 1px solid #171d31; padding: 8px; }
-    .mono { font-family: ui-monospace, monospace; }
-    .up { color: var(--ok); font-weight: 700; }
-    .down { color: var(--bad); font-weight: 700; }
-    .chk { display: flex; justify-content: space-between; align-items: center; padding: 7px 0; border-bottom: 1px solid #171d31; font-size: 0.8rem; }
-    .chk:last-child { border-bottom: 0; }
+    :root { --bg:#08090f; --panel:#101320; --panel-2:#0b0e18; --border:#1f263b; --violet:#8b5cf6; --cyan:#22d3ee; --ok:#10b981; --warn:#f59e0b; --bad:#f43f5e; --text:#f4f4f5; --muted:#94a3b8; }
+    * { box-sizing:border-box; font-family:Inter,system-ui,-apple-system,sans-serif; }
+    body { margin:0; background:radial-gradient(960px 420px at 85% -10%, rgba(139,92,246,0.12), transparent), var(--bg); color:var(--text); padding:22px 28px; }
+    .top { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; border-bottom:1px solid var(--border); padding-bottom:13px; margin-bottom:18px; }
+    h1 { margin:0; font-size:1.32rem; letter-spacing:-0.02em; }
+    .sub { color:var(--muted); font-size:0.8rem; margin-top:2px; }
+    .actions { display:flex; gap:8px; flex-wrap:wrap; }
+    button { background:var(--violet); color:#fff; border:0; padding:7px 12px; border-radius:6px; font-weight:600; font-size:0.76rem; cursor:pointer; }
+    button.sec { background:#161b2e; border:1px solid #2b3556; color:var(--cyan); }
+    button.mini { background:#161b2e; border:1px solid #2b3556; color:var(--cyan); padding:3px 8px; font-size:0.7rem; }
+    button.active { background:var(--violet); color:#fff; border-color:var(--violet); }
+    .kpis { display:grid; grid-template-columns:repeat(4,1fr); gap:13px; margin-bottom:16px; }
+    .kpi { background:var(--panel); border:1px solid var(--border); border-radius:10px; padding:13px 15px; }
+    .lbl { font-size:0.69rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.06em; }
+    .val { font-size:1.38rem; font-weight:700; margin-top:4px; font-family:ui-monospace,monospace; }
+    .grid { display:grid; grid-template-columns:1.2fr 0.8fr; gap:16px; }
+    .panel { background:var(--panel); border:1px solid var(--border); border-radius:10px; padding:15px; min-width:0; }
+    .panel h2 { margin:0 0 11px; font-size:0.94rem; }
+    table { width:100%; border-collapse:collapse; font-size:0.78rem; }
+    th { text-align:left; color:var(--muted); font-size:0.69rem; text-transform:uppercase; border-bottom:1px solid var(--border); padding:6px 7px; }
+    td { border-bottom:1px solid #171d31; padding:7px; }
+    .mono { font-family:ui-monospace,monospace; }
+    .up { color:var(--ok); font-weight:700; }
+    .down { color:var(--bad); font-weight:700; }
+    .chk { display:flex; justify-content:space-between; align-items:center; padding:7px 0; border-bottom:1px solid #171d31; font-size:0.79rem; }
+    .chk:last-child { border-bottom:0; }
+    .tabs { display:flex; gap:5px; margin-bottom:11px; flex-wrap:wrap; }
+    pre { margin:0; padding:10px; max-height:240px; overflow:auto; background:var(--panel-2); border:1px solid var(--border); border-radius:7px; font-size:0.71rem; color:#c4b5fd; white-space:pre-wrap; }
+    .dist-bar { display:flex; height:8px; border-radius:999px; overflow:hidden; background:#171d31; margin:8px 0 4px; }
+    @media (max-width: 950px) {
+      .kpis { grid-template-columns:repeat(2,1fr); }
+      .grid { grid-template-columns:1fr; }
+    }
   </style>
 </head>
 <body>
   <div class="top">
     <div>
       <h1>EdgeOps — Nginx Reverse Proxy &amp; Service Health Stack</h1>
-      <div class="sub">Containerized API Gateway · Rate Limiting (limit_req) · Security Headers · Upstream Probes</div>
+      <div class="sub">Containerized API Gateway · Rate Limiting (limit_req) · Live RTT Telemetry · Hardening Audit</div>
     </div>
     <div class="actions">
-      <button class="sec" onclick="hitProxy('auth-api')">Route /proxy/auth-api</button>
+      <button id="pollBtn" class="sec" onclick="togglePoll()">Auto-Poll: OFF</button>
       <button class="sec" style="color:#fbbf24;" onclick="simulateBurst()">Simulate Burst (429)</button>
-      <button onclick="loadOverview()">Refresh Health Probes</button>
+      <button class="sec" style="color:#fda4af;" onclick="resetMetrics()">Reset Metrics</button>
+      <button onclick="loadOverview()">Refresh Probes</button>
     </div>
   </div>
 
@@ -50,11 +60,20 @@
     <div class="panel">
       <h2>Upstream Container Targets</h2>
       <table>
-        <thead><tr><th>Service</th><th>Target Endpoint</th><th>Status</th><th>Code</th><th>RTT</th></tr></thead>
+        <thead><tr><th>Service</th><th>Target Endpoint</th><th>Status</th><th>RTT</th><th>Action</th></tr></thead>
         <tbody id="upstreamsBody"></tbody>
       </table>
 
-      <h2 style="margin-top:18px;">Recent Proxy Access Stream</h2>
+      <div style="margin-top:16px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <h2 style="margin:0;">RTT Latency Sparkline &amp; Traffic Mix</h2>
+          <span id="mixText" class="mono" style="font-size:0.72rem;color:var(--muted);"></span>
+        </div>
+        <div class="dist-bar" id="distBar"></div>
+        <svg id="rttSvg" viewBox="0 0 380 65" style="width:100%;height:65px;background:var(--panel-2);border:1px solid var(--border);border-radius:7px;margin-top:4px;"></svg>
+      </div>
+
+      <h2 style="margin-top:15px;">Recent Proxy Access Stream</h2>
       <table>
         <thead><tr><th>UTC</th><th>Route</th><th>Upstream</th><th>HTTP</th><th>Latency</th></tr></thead>
         <tbody id="accessBody"></tbody>
@@ -62,12 +81,36 @@
     </div>
 
     <div class="panel">
-      <h2>Nginx Config &amp; Hardening Audit (nginx/edgeops.conf)</h2>
-      <div id="auditList"></div>
+      <div class="tabs" id="rightTabs">
+        <button class="mini active" onclick="setRightTab('audit', this)">Hardening Audit</button>
+        <button class="mini" onclick="setRightTab('metrics', this)">Prometheus /metrics</button>
+        <button class="mini" onclick="setRightTab('conf', this)">nginx.conf</button>
+      </div>
+      <div id="rightPane"></div>
     </div>
   </div>
 
 <script>
+const esc = (s) => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+let latestOverview = null;
+let latestMetricsTxt = '';
+let rightTab = 'audit';
+let pollTimer = null;
+
+function togglePoll() {
+  const btn = document.getElementById('pollBtn');
+  if (pollTimer) {
+    clearInterval(pollTimer);
+    pollTimer = null;
+    btn.textContent = 'Auto-Poll: OFF';
+    btn.classList.remove('active');
+  } else {
+    pollTimer = setInterval(loadOverview, 5000);
+    btn.textContent = 'Auto-Poll: ON (5s)';
+    btn.classList.add('active');
+  }
+}
+
 async function hitProxy(svc) {
   await fetch('/proxy/' + svc);
   await loadOverview();
@@ -76,12 +119,46 @@ async function simulateBurst() {
   await fetch('/api/simulate-burst', { method: 'POST' });
   await loadOverview();
 }
+async function resetMetrics() {
+  await fetch('/api/reset-metrics', { method: 'POST' });
+  await loadOverview();
+}
+
+function setRightTab(tab, el) {
+  rightTab = tab;
+  document.querySelectorAll('#rightTabs button').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  renderRightPane();
+}
+
+function renderRightPane() {
+  if (!latestOverview) return;
+  const pane = document.getElementById('rightPane');
+  if (rightTab === 'audit') {
+    pane.innerHTML = latestOverview.nginx_audit.audit_checks.map(c => `
+      <div class="chk">
+        <span>${esc(c.check)}</span>
+        <span class="mono ${c.passed ? 'up' : 'down'}">${c.passed ? 'PASS' : 'FAIL'}</span>
+      </div>
+    `).join('');
+  } else if (rightTab === 'metrics') {
+    pane.innerHTML = `<pre>${esc(latestMetricsTxt || 'Loading /metrics...')}</pre>`;
+  } else {
+    pane.innerHTML = `<pre>${esc(latestOverview.nginx_conf_source || 'nginx/edgeops.conf not found')}</pre>`;
+  }
+}
+
 async function loadOverview() {
-  const res = await fetch('/api/overview');
-  const data = await res.json();
+  const [ovRes, mRes] = await Promise.all([fetch('/api/overview'), fetch('/metrics')]);
+  const data = await ovRes.json();
+  latestOverview = data;
+  latestMetricsTxt = await mRes.text();
+
   const m = data.metrics;
-  const ups = data.upstreams;
+  const ups = data.upstreams || [];
   const upCount = ups.filter(u => u.healthy).length;
+  const b = data.status_breakdown || { '2xx': 0, '429': 0, '5xx': 0 };
+  const totalMix = Math.max(1, b['2xx'] + b['429'] + b['5xx']);
 
   document.getElementById('kpis').innerHTML = `
     <div class="kpi"><div class="lbl">Upstream Mesh</div><div class="val" style="color:var(--ok);">${upCount}/${ups.length} UP</div></div>
@@ -92,30 +169,46 @@ async function loadOverview() {
 
   document.getElementById('upstreamsBody').innerHTML = ups.map(u => `
     <tr>
-      <td class="mono" style="color:var(--cyan);">${u.service}</td>
-      <td class="mono">${u.url}</td>
-      <td class="${u.healthy ? 'up' : 'down'}">${u.status}</td>
-      <td class="mono">${u.http_code}</td>
+      <td class="mono" style="color:var(--cyan);">${esc(u.service)}</td>
+      <td class="mono">${esc(u.url)}</td>
+      <td class="${u.healthy ? 'up' : 'down'}">${esc(u.status)} (${u.http_code})</td>
       <td class="mono">${u.latency_ms} ms</td>
+      <td><button class="mini" onclick="hitProxy('${esc(u.service)}')">Route</button></td>
     </tr>
   `).join('');
 
-  document.getElementById('accessBody').innerHTML = m.recent_access.slice(0, 5).map(a => `
+  document.getElementById('mixText').textContent = `2xx: ${b['2xx']} · 429: ${b['429']} · 5xx: ${b['5xx']}`;
+  document.getElementById('distBar').innerHTML = `
+    <div style="width:${(b['2xx']/totalMix)*100}%;background:#10b981;"></div>
+    <div style="width:${(b['429']/totalMix)*100}%;background:#f59e0b;"></div>
+    <div style="width:${(b['5xx']/totalMix)*100}%;background:#f43f5e;"></div>
+  `;
+
+  const acc = [...(m.recent_access || [])].reverse();
+  if (acc.length > 1) {
+    const w = 380, h = 65, pad = 8;
+    const maxL = Math.max(5, ...acc.map(a => Number(a.latency_ms || 0)));
+    const pts = acc.map((a, i) => {
+      const x = pad + (i / (acc.length - 1)) * (w - pad * 2);
+      const y = h - pad - (Number(a.latency_ms || 0) / maxL) * (h - pad * 2);
+      return `${x.toFixed(1)},${y.toFixed(1)}`;
+    }).join(' ');
+    document.getElementById('rttSvg').innerHTML = `<polyline fill="none" stroke="#22d3ee" stroke-width="2" points="${pts}" />`;
+  } else {
+    document.getElementById('rttSvg').innerHTML = '';
+  }
+
+  document.getElementById('accessBody').innerHTML = (m.recent_access || []).slice(0, 5).map(a => `
     <tr>
-      <td class="mono">${a.time_utc}</td>
-      <td class="mono">${a.path}</td>
-      <td class="mono">${a.upstream}</td>
+      <td class="mono">${esc(a.time_utc)}</td>
+      <td class="mono">${esc(a.path)}</td>
+      <td class="mono">${esc(a.upstream)}</td>
       <td class="mono" style="color:${a.status < 400 ? '#34d399' : '#fb7185'};">${a.status}</td>
       <td class="mono">${a.latency_ms} ms</td>
     </tr>
   `).join('');
 
-  document.getElementById('auditList').innerHTML = data.nginx_audit.audit_checks.map(c => `
-    <div class="chk">
-      <span>${c.check}</span>
-      <span class="mono ${c.passed ? 'up' : 'down'}">${c.passed ? 'PASS' : 'FAIL'}</span>
-    </div>
-  `).join('');
+  renderRightPane();
 }
 loadOverview();
 </script>

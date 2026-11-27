@@ -79,6 +79,14 @@ class GatewayMetrics:
                 "recent_access": list(self.recent_access),
             }
 
+    def reset(self) -> None:
+        with self._lock:
+            self.total_requests = 0
+            self.rate_limited_429 = 0
+            self.errors_5xx = 0
+            self.latencies_ms.clear()
+            self.recent_access.clear()
+
 
 def probe_http_target(name: str, url: str, timeout: float = 1.5) -> dict:
     """Probe a single HTTP upstream endpoint and return health state and RTT latency."""

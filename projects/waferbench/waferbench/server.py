@@ -151,6 +151,27 @@ def create_server(
                 self._send_json(201, {"lot_id": lot_id, "lot_summary": mcu_store.compute_lot_yield(lot_id)})
                 return
 
+            if self.path == "/api/mcu/ingest-frame":
+                length = int(self.headers.get("Content-Length", "0"))
+                try:
+                    body = json.loads(self.rfile.read(length).decode("utf-8")) if length > 0 else {}
+                    raw_frame = str(body.get("raw_frame", "")).strip()
+                    if not raw_frame:
+                        raise ValueError("raw_frame is required.")
+                    parsed = parse_uart_frame(raw_frame)
+                    evaluated = evaluate_frame_against_specs(parsed)
+                except (ValueError, KeyError, TypeError) as exc:
+                    self._send_json(400, {"error": str(exc)})
+                    return
+
+                requested_lot = body.get("lot_id")
+                with mcu_store._connect() as conn:
+                    latest = conn.execute("SELECT id FROM bench_lots ORDER BY id DESC LIMIT 1").fetchone()
+                target_id = int(requested_lot) if requested_lot else (int(latest["id"]) if latest else mcu_store.create_lot("LOT-LIVE-INGEST"))
+                mcu_store.record_evaluated_frame(target_id, evaluated)
+                self._send_json(201, {"lot_id": target_id, "frame": evaluated, "lot_summary": mcu_store.compute_lot_yield(target_id)})
+                return
+
             self._send_json(404, {"error": "Not found"})
 
     return ThreadingHTTPServer((host, port), WaferHandler)

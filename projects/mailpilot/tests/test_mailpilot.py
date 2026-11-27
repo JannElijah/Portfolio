@@ -57,6 +57,29 @@ def test_mailpilot_server_ingest_and_outbox_approval(tmp_path) -> None:
             approved = json.loads(r2.read().decode("utf-8"))
         assert approved["email"]["status"] == "SENT"
         assert approved["outbox_sent"] >= 1
+
+        with urllib.request.urlopen(f"http://127.0.0.1:{port}/api/outbox", timeout=3) as r3:
+            outbox_data = json.loads(r3.read().decode("utf-8"))
+        assert any(o["recipient"] == "pm@makati-client.ph" for o in outbox_data["outbox"])
+
+        cfg_req = urllib.request.Request(
+            f"http://127.0.0.1:{port}/api/config/validate",
+            data=json.dumps(
+                {
+                    "email": "ops@company.ph",
+                    "imap_host": "imap.company.ph",
+                    "imap_port": 143,
+                    "smtp_host": "smtp.company.ph",
+                    "smtp_port": 25,
+                    "use_tls": False,
+                }
+            ).encode("utf-8"),
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        with urllib.request.urlopen(cfg_req, timeout=3) as r4:
+            cfg = json.loads(r4.read().decode("utf-8"))
+        assert cfg["valid"] is False and len(cfg["issues"]) >= 1
     finally:
         srv.shutdown()
         srv.server_close()

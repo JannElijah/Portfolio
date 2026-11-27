@@ -69,8 +69,8 @@ class MailStore:
                         "Attached is the billing quote and payment reference for server hosting renewal due Friday.",
                     ),
                     (
-                        "valpatrick.fabregas@neuronet-ai-innovations.com",
-                        "OJT Application – Makati Engineering Track Screening",
+                        "talent@techcorp-makati.ph",
+                        "Engineering Internship Screening – Python & Web Automation Track",
                         "Following up on Python automation, website maintenance, and AI email workflow demos prior to screening.",
                     ),
                 ]
@@ -152,3 +152,8 @@ class MailStore:
     def outbox_count(self) -> int:
         with self._connect() as conn:
             return int(conn.execute("SELECT COUNT(*) FROM outbox_log").fetchone()[0])
+
+    def list_outbox(self) -> list[dict]:
+        with self._connect() as conn:
+            rows = conn.execute("SELECT * FROM outbox_log ORDER BY id DESC").fetchall()
+        return [dict(r) for r in rows]

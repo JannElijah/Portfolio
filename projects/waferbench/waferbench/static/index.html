@@ -5,33 +5,44 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>WaferBench — Semiconductor Telemetry &amp; QA Console</title>
   <style>
-    :root { --bg: #071012; --card: #0d1a1d; --border: #1b343a; --accent: #2dd4bf; --ok: #10b981; --fail: #f43f5e; --text: #f4f4f5; --muted: #94a3b8; }
-    * { box-sizing: border-box; font-family: Inter, system-ui, sans-serif; }
-    body { margin: 0; background: var(--bg); color: var(--text); padding: 20px 28px; }
-    .top { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; border-bottom: 1px solid var(--border); padding-bottom: 12px; margin-bottom: 16px; }
-    h1 { margin: 0; font-size: 1.3rem; }
-    .sub { color: var(--muted); font-size: 0.8rem; margin-top: 2px; }
-    .controls { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 0.78rem; }
-    select { background: #071012; border: 1px solid var(--border); color: var(--text); padding: 6px 8px; border-radius: 6px; font-family: monospace; }
-    .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 16px; }
-    .kpi { background: var(--card); border: 1px solid var(--border); border-top: 2px solid var(--accent); border-radius: 8px; padding: 12px 14px; }
-    .kpi-label { font-size: 0.68rem; color: var(--muted); text-transform: uppercase; }
-    .kpi-val { font-family: monospace; font-size: 1.4rem; font-weight: 700; margin-top: 4px; }
-    .grid { display: grid; grid-template-columns: 1.45fr 1fr; gap: 16px; }
-    .panel { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 14px; }
-    table { width: 100%; border-collapse: collapse; font-size: 0.8rem; font-family: monospace; }
-    th, td { text-align: left; padding: 7px 6px; border-bottom: 1px solid var(--border); }
-    .pass { color: var(--ok); font-weight: 700; }
-    .fail { color: var(--fail); font-weight: 700; }
-    button, a.btn { background: var(--accent); color: #042f2e; border: 0; padding: 7px 12px; border-radius: 6px; font-weight: 700; cursor: pointer; font-size: 0.78rem; text-decoration: none; }
-    a.btn-sec { background: #071012; border: 1px solid var(--border); color: var(--accent); padding: 6px 11px; border-radius: 6px; font-size: 0.78rem; text-decoration: none; }
+    :root { --bg:#071012; --card:#0d1a1d; --card-2:#091316; --border:#1b343a; --accent:#2dd4bf; --ok:#10b981; --fail:#f43f5e; --warn:#f59e0b; --text:#f4f4f5; --muted:#94a3b8; }
+    * { box-sizing:border-box; font-family:Inter,system-ui,-apple-system,sans-serif; }
+    body { margin:0; background:radial-gradient(950px 420px at 80% -10%, rgba(45,212,191,0.09), transparent), var(--bg); color:var(--text); padding:20px 26px; }
+    .top { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; border-bottom:1px solid var(--border); padding-bottom:12px; margin-bottom:16px; }
+    h1 { margin:0; font-size:1.3rem; letter-spacing:-0.02em; }
+    .sub { color:var(--muted); font-size:0.8rem; margin-top:2px; }
+    .controls { display:flex; align-items:center; gap:9px; flex-wrap:wrap; font-size:0.78rem; }
+    select, input.inp { background:#071012; border:1px solid var(--border); color:var(--text); padding:6px 9px; border-radius:6px; font-family:ui-monospace,monospace; font-size:0.76rem; }
+    .kpis { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:16px; }
+    .kpi { background:var(--card); border:1px solid var(--border); border-top:2px solid var(--accent); border-radius:8px; padding:12px 14px; }
+    .kpi-label { font-size:0.68rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.06em; }
+    .kpi-val { font-family:ui-monospace,monospace; font-size:1.35rem; font-weight:700; margin-top:4px; }
+    .grid { display:grid; grid-template-columns:1.35fr 1fr; gap:16px; }
+    .panel { background:var(--card); border:1px solid var(--border); border-radius:10px; padding:14px; min-width:0; }
+    .panel-head { display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:10px; flex-wrap:wrap; }
+    .tabs { display:flex; gap:5px; }
+    .tab { background:var(--card-2); border:1px solid var(--border); color:var(--muted); padding:4px 9px; border-radius:6px; font-size:0.72rem; cursor:pointer; font-weight:600; }
+    .tab.active { background:var(--accent); color:#042f2e; border-color:var(--accent); }
+    table { width:100%; border-collapse:collapse; font-size:0.78rem; font-family:ui-monospace,monospace; }
+    th, td { text-align:left; padding:7px 6px; border-bottom:1px solid var(--border); }
+    tr:hover td { background:rgba(45,212,191,0.04); }
+    .pass { color:var(--ok); font-weight:700; }
+    .fail { color:var(--fail); font-weight:700; }
+    button, a.btn { background:var(--accent); color:#042f2e; border:0; padding:7px 12px; border-radius:6px; font-weight:700; cursor:pointer; font-size:0.77rem; text-decoration:none; }
+    button.sec, a.btn-sec { background:#071012; border:1px solid var(--border); color:var(--accent); padding:6px 11px; border-radius:6px; font-size:0.76rem; font-weight:600; text-decoration:none; }
+    .scope-box { background:#071012; border:1px solid var(--border); border-radius:7px; padding:6px; margin-top:6px; }
+    .injector { margin-top:14px; border-top:1px solid var(--border); padding-top:12px; }
+    @media (max-width: 950px) {
+      .kpis { grid-template-columns:repeat(2,1fr); }
+      .grid { grid-template-columns:1fr; }
+    }
   </style>
 </head>
 <body>
   <div class="top">
     <div>
       <h1>WaferBench — MCU Telemetry &amp; QA Release Console</h1>
-      <div class="sub">Lot History · Fault-Injection Bench · Voltage/Thermal Trace · CI Release Gate</div>
+      <div class="sub">Dual-Channel Oscilloscope · Raw UART Frame Injector · CI Release Gate</div>
     </div>
     <div class="controls">
       <select id="lotSelect" onchange="refresh()"></select>
@@ -42,24 +53,114 @@
       <a id="csvLink" class="btn-sec" href="/api/mcu/export.csv">Export CSV</a>
     </div>
   </div>
+
   <div class="kpis" id="kpis"></div>
+
   <div class="grid">
     <div class="panel">
-      <h2 style="margin:0 0 10px;font-size:0.95rem;">Recent UART Hardware Bench Frames</h2>
+      <div class="panel-head">
+        <h2 style="margin:0;font-size:0.95rem;">UART Hardware Bench Frames</h2>
+        <div class="tabs" id="frameTabs">
+          <button class="tab active" onclick="setFrameFilter('ALL', this)">All Frames</button>
+          <button class="tab" onclick="setFrameFilter('FAIL', this)">FAIL Only</button>
+        </div>
+      </div>
       <table>
         <thead><tr><th>Device</th><th>VDD 3.3V</th><th>VCC 5V</th><th>Temp</th><th>Current</th><th>Verdict</th></tr></thead>
         <tbody id="framesBody"></tbody>
       </table>
+
+      <div class="injector">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px;">
+          <span class="kpi-label">Live Raw UART Frame Injector</span>
+          <div style="display:flex;gap:5px;">
+            <button class="sec" onclick="fillFrame(true)">Preset: PASS</button>
+            <button class="sec" style="color:#fda4af;" onclick="fillFrame(false)">Preset: Out-of-Spec</button>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <input id="rawFrameInput" class="inp" style="flex:1;min-width:220px;" value="DEV=PIC32MX-99,VDD_3V3=3.29,VCC_5V=5.01,MCU_TEMP_C=46.2,I_DRAW_MA=118.4" />
+          <button onclick="ingestFrame()">Parse &amp; Record Frame</button>
+        </div>
+        <div id="ingestMsg" style="font-size:0.74rem;color:var(--accent);margin-top:6px;"></div>
+      </div>
     </div>
+
     <div class="panel">
       <div id="qaPanel"></div>
-      <div style="margin-top:14px;border-top:1px solid var(--border);padding-top:12px;">
-        <div style="font-size:0.75rem;color:var(--muted);margin-bottom:6px;text-transform:uppercase;">VDD 3.3V Rail &amp; Thermal Trend (°C)</div>
-        <svg id="trendSvg" viewBox="0 0 360 110" style="width:100%;height:110px;background:#071012;border:1px solid var(--border);border-radius:6px;"></svg>
+      <div style="margin-top:12px;border-top:1px solid var(--border);padding-top:10px;">
+        <div class="kpi-label">CH1: VDD 3.3V Rail Trace (Spec 3.15V–3.45V)</div>
+        <div class="scope-box"><svg id="vddSvg" viewBox="0 0 360 90" style="width:100%;height:90px;display:block;"></svg></div>
+        <div class="kpi-label" style="margin-top:10px;">CH2: MCU Thermal Trace (°C · Ceiling 85°C)</div>
+        <div class="scope-box"><svg id="tempSvg" viewBox="0 0 360 90" style="width:100%;height:90px;display:block;"></svg></div>
       </div>
     </div>
   </div>
+
 <script>
+const esc = (s) => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+let latestFrames = [];
+let frameFilter = 'ALL';
+
+function setFrameFilter(mode, el) {
+  frameFilter = mode;
+  document.querySelectorAll('#frameTabs .tab').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  renderFrames();
+}
+
+function renderFrames() {
+  const rows = latestFrames.filter(f => frameFilter === 'ALL' || f.verdict !== 'PASS').slice(0, 8);
+  document.getElementById('framesBody').innerHTML = rows.length ? rows.map(f => {
+    const vddBad = f.vdd_3v3 < 3.15 || f.vdd_3v3 > 3.45;
+    const tmpBad = f.mcu_temp_c > 85.0;
+    return `
+      <tr>
+        <td>${esc(f.device_id)}</td>
+        <td style="color:${vddBad ? '#fb7185' : 'inherit'};">${f.vdd_3v3}V</td>
+        <td>${f.vcc_5v}V</td>
+        <td style="color:${tmpBad ? '#fb7185' : 'inherit'};">${f.mcu_temp_c}°C</td>
+        <td>${f.i_draw_ma}mA</td>
+        <td class="${f.verdict === 'PASS' ? 'pass' : 'fail'}">${esc(f.verdict)}</td>
+      </tr>
+    `;
+  }).join('') : '<tr><td colspan="6" style="color:var(--muted);">No matching frames in this lot.</td></tr>';
+}
+
+function renderScope() {
+  const ordered = [...latestFrames].reverse();
+  if (ordered.length < 2) return;
+  const w = 360, h = 90, pad = 10;
+
+  // CH1: VDD 3.3V (scale 2.90V - 3.60V)
+  const vMin = 2.90, vMax = 3.60;
+  const yV = (v) => h - pad - ((Math.max(vMin, Math.min(vMax, v)) - vMin) / (vMax - vMin)) * (h - pad * 2);
+  const bandTop = yV(3.45), bandBot = yV(3.15);
+  const vPts = ordered.map((f, i) => {
+    const x = pad + (i / (ordered.length - 1)) * (w - pad * 2);
+    return { x, y: yV(f.vdd_3v3), bad: f.vdd_3v3 < 3.15 || f.vdd_3v3 > 3.45 };
+  });
+  document.getElementById('vddSvg').innerHTML = `
+    <rect x="${pad}" y="${bandTop.toFixed(1)}" width="${w - pad*2}" height="${(bandBot - bandTop).toFixed(1)}" fill="rgba(16,185,129,0.13)" />
+    <polyline fill="none" stroke="#38bdf8" stroke-width="2" points="${vPts.map(p => p.x.toFixed(1)+','+p.y.toFixed(1)).join(' ')}" />
+    ${vPts.map(p => `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="2.7" fill="${p.bad ? '#f43f5e' : '#38bdf8'}" />`).join('')}
+  `;
+
+  // CH2: Temp (scale 25C - 105C, threshold 85C)
+  const tMin = 25, tMax = 105;
+  const yT = (t) => h - pad - ((Math.max(tMin, Math.min(tMax, t)) - tMin) / (tMax - tMin)) * (h - pad * 2);
+  const ceilY = yT(85);
+  const tPts = ordered.map((f, i) => {
+    const x = pad + (i / (ordered.length - 1)) * (w - pad * 2);
+    return { x, y: yT(f.mcu_temp_c), bad: f.mcu_temp_c > 85 };
+  });
+  document.getElementById('tempSvg').innerHTML = `
+    <line x1="${pad}" y1="${ceilY.toFixed(1)}" x2="${w - pad}" y2="${ceilY.toFixed(1)}" stroke="#f43f5e" stroke-dasharray="4 3" stroke-width="1.2" />
+    <polyline fill="none" stroke="#2dd4bf" stroke-width="2" points="${tPts.map(p => p.x.toFixed(1)+','+p.y.toFixed(1)).join(' ')}" />
+    ${tPts.map(p => `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="2.7" fill="${p.bad ? '#f43f5e' : '#2dd4bf'}" />`).join('')}
+  `;
+}
+
 async function refresh() {
   const lotSel = document.getElementById('lotSelect');
   const selectedId = lotSel.value || '';
@@ -68,49 +169,60 @@ async function refresh() {
   const { lots, lot_summary: lot, recent_frames: frames, qa_gate: gate } = await res.json();
 
   if (lots && lots.length) {
-    lotSel.innerHTML = lots.map(l => `<option value="${l.id}">${l.lot_code}</option>`).join('');
+    lotSel.innerHTML = lots.map(l => `<option value="${l.id}">${esc(l.lot_code)}</option>`).join('');
     if (selectedId) lotSel.value = selectedId;
   }
   document.getElementById('csvLink').href = '/api/mcu/export.csv?lot_id=' + (lot.lot_id || '');
 
   document.getElementById('kpis').innerHTML = `
-    <div class="kpi"><div class="kpi-label">Active Lot</div><div class="kpi-val" style="font-size:1.05rem;">${lot.lot_code}</div></div>
+    <div class="kpi"><div class="lbl kpi-label">Active Lot</div><div class="kpi-val" style="font-size:1.05rem;">${esc(lot.lot_code)}</div></div>
     <div class="kpi"><div class="kpi-label">Lot Yield</div><div class="kpi-val" style="color:#10b981;">${lot.yield_percent}%</div></div>
-    <div class="kpi"><div class="kpi-label">Peak MCU Temp</div><div class="kpi-val">${lot.max_temp_c}°C</div></div>
-    <div class="kpi"><div class="kpi-label">Min VDD Droop</div><div class="kpi-val">${lot.min_vdd_3v3}V</div></div>
+    <div class="kpi"><div class="kpi-label">Peak MCU Temp</div><div class="kpi-val" style="color:${lot.max_temp_c > 85 ? '#fb7185' : 'inherit'};">${lot.max_temp_c}°C</div></div>
+    <div class="kpi"><div class="kpi-label">Min VDD Droop</div><div class="kpi-val" style="color:${lot.min_vdd_3v3 < 3.15 ? '#fb7185' : 'inherit'};">${lot.min_vdd_3v3}V</div></div>
   `;
-  document.getElementById('framesBody').innerHTML = frames.slice(0, 7).map(f => `
-    <tr>
-      <td>${f.device_id}</td><td>${f.vdd_3v3}V</td><td>${f.vcc_5v}V</td><td>${f.mcu_temp_c}°C</td><td>${f.i_draw_ma}mA</td>
-      <td class="${f.verdict === 'PASS' ? 'pass' : 'fail'}">${f.verdict}</td>
-    </tr>
-  `).join('');
+
+  latestFrames = frames || [];
+  renderFrames();
+  renderScope();
 
   const s = gate.summary || {};
   document.getElementById('qaPanel').innerHTML = `
-    <h2 style="margin:0 0 8px;font-size:0.95rem;">CI Release Gate (${s.suite_name || 'N/A'})</h2>
-    <p style="font-size:0.85rem;margin:4px 0;">Verdict: <strong class="${gate.verdict === 'PASS' ? 'pass' : 'fail'}">${gate.verdict}</strong> · Pass Rate: <strong>${s.pass_rate_percent}%</strong></p>
-    <p style="font-size:0.8rem;color:#cbd5e1;margin:4px 0;">p50 / p95 Latency: <code>${s.p50_case_s}s / ${s.p95_case_s}s</code> · Build: ${s.build_ref}</p>
+    <h2 style="margin:0 0 8px;font-size:0.95rem;">CI Release Gate (${esc(s.suite_name || 'N/A')})</h2>
+    <p style="font-size:0.84rem;margin:4px 0;">Verdict: <strong class="${gate.verdict === 'PASS' ? 'pass' : 'fail'}">${esc(gate.verdict)}</strong> · Pass Rate: <strong>${s.pass_rate_percent}%</strong></p>
+    <p style="font-size:0.78rem;color:#cbd5e1;margin:4px 0;">p50 / p95 Latency: <code>${s.p50_case_s}s / ${s.p95_case_s}s</code> · Build: ${esc(s.build_ref)}</p>
   `;
-
-  if (frames.length > 1) {
-    const ordered = [...frames].reverse();
-    const w = 360, h = 110, pad = 12;
-    const temps = ordered.map(f => f.mcu_temp_c);
-    const minT = Math.min(...temps) - 2, maxT = Math.max(...temps) + 2;
-    const pts = ordered.map((f, i) => {
-      const x = pad + (i / (ordered.length - 1)) * (w - pad * 2);
-      const y = h - pad - ((f.mcu_temp_c - minT) / Math.max(1, maxT - minT)) * (h - pad * 2);
-      return `${x.toFixed(1)},${y.toFixed(1)}`;
-    }).join(' ');
-    document.getElementById('trendSvg').innerHTML = `
-      <polyline fill="none" stroke="#2dd4bf" stroke-width="2.2" points="${pts}" />
-    `;
-  }
 }
+
+function fillFrame(ok) {
+  document.getElementById('rawFrameInput').value = ok
+    ? 'DEV=PIC32MX-42,VDD_3V3=3.31,VCC_5V=5.00,MCU_TEMP_C=44.8,I_DRAW_MA=115.2'
+    : 'DEV=PIC32MX-77,VDD_3V3=2.98,VCC_5V=4.95,MCU_TEMP_C=92.4,I_DRAW_MA=245.0';
+}
+
+async function ingestFrame() {
+  const raw_frame = document.getElementById('rawFrameInput').value;
+  const lot_id = document.getElementById('lotSelect').value || null;
+  const r = await fetch('/api/mcu/ingest-frame', {
+    method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({raw_frame, lot_id})
+  });
+  const data = await r.json();
+  const msgEl = document.getElementById('ingestMsg');
+  if (!r.ok) {
+    msgEl.style.color = '#fb7185';
+    msgEl.textContent = 'Parse error: ' + (data.error || 'Invalid frame');
+    return;
+  }
+  msgEl.style.color = data.frame.verdict === 'PASS' ? '#34d399' : '#fb7185';
+  msgEl.textContent = `Recorded ${data.frame.device_id} → ${data.frame.verdict}`;
+  await refresh();
+}
+
 async function runSim() {
   const fault_probability = Number(document.getElementById('faultSlider').value) / 100;
-  const r = await fetch('/api/mcu/simulate', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({lot_code: 'LOT-SIM-' + Math.floor(Math.random()*90+10), fault_probability}) });
+  const r = await fetch('/api/mcu/simulate', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({lot_code: 'LOT-SIM-' + Math.floor(Math.random()*90+10), fault_probability})
+  });
   const data = await r.json();
   document.getElementById('lotSelect').value = '';
   await refresh();

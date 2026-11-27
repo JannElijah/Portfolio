@@ -47,6 +47,8 @@ def test_reverse_proxy_headers_health_and_down_upstream() -> None:
         st_ov, _, ov_body = _get(f"http://127.0.0.1:{port}/api/overview")
         assert st_ov == 200
         overview = json.loads(ov_body)
+        assert "nginx_conf_source" in overview and "limit_req_zone" in overview["nginx_conf_source"]
+        assert "status_breakdown" in overview and overview["status_breakdown"]["2xx"] >= 1
         by_name = {u["service"]: u for u in overview["upstreams"]}
         assert by_name["auth-api"]["status"] == "UP"
         assert by_name["offline-svc"]["status"] == "DOWN"
@@ -55,11 +57,17 @@ def test_reverse_proxy_headers_health_and_down_upstream() -> None:
         assert st_metrics == 200
         assert "edgeops_requests_total" in metrics_txt
 
-        # Verify burst simulator triggers 429 metrics cleanly
+        # Verify burst simulator triggers 429 metrics cleanly and reset clears counters
         req_burst = urllib.request.Request(f"http://127.0.0.1:{port}/api/simulate-burst", data=b"{}", method="POST")
         with urllib.request.urlopen(req_burst, timeout=3) as b_resp:
             burst = json.loads(b_resp.read().decode("utf-8"))
         assert burst["allowed"] == 2 and burst["rate_limited_429"] == 3
+
+        req_reset = urllib.request.Request(f"http://127.0.0.1:{port}/api/reset-metrics", data=b"{}", method="POST")
+        with urllib.request.urlopen(req_reset, timeout=3) as r_resp:
+            assert json.loads(r_resp.read().decode("utf-8"))["ok"] is True
+        _, _, reset_metrics_txt = _get(f"http://127.0.0.1:{port}/metrics")
+        assert "edgeops_requests_total 0" in reset_metrics_txt
     finally:
         srv.shutdown()
         srv.server_close()

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import threading
+import urllib.error
 import urllib.request
 
 import pytest
@@ -59,3 +60,30 @@ def test_overview_and_simulation_endpoints(bench_url: str) -> None:
         csv_text = csv_resp.read().decode("utf-8")
         assert "device_id,vdd_3v3,vcc_5v,mcu_temp_c,i_draw_ma,verdict" in csv_text
         assert len(csv_text.strip().splitlines()) == 11
+
+    # Inject live raw UART frame and verify invalid frame rejection
+    ing_req = urllib.request.Request(
+        f"{bench_url}/api/mcu/ingest-frame",
+        data=json.dumps(
+            {
+                "lot_id": sim_data["lot_id"],
+                "raw_frame": "DEV=PIC32MX-99,VDD_3V3=3.29,VCC_5V=5.01,MCU_TEMP_C=46.2,I_DRAW_MA=118.4",
+            }
+        ).encode("utf-8"),
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+    with urllib.request.urlopen(ing_req, timeout=3) as ing_resp:
+        assert ing_resp.status == 201
+        ing_data = json.loads(ing_resp.read().decode("utf-8"))
+    assert ing_data["frame"]["verdict"] == "PASS"
+
+    bad_req = urllib.request.Request(
+        f"{bench_url}/api/mcu/ingest-frame",
+        data=json.dumps({"raw_frame": "BAD_FRAME"}).encode("utf-8"),
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+    with pytest.raises(urllib.error.HTTPError) as exc_info:
+        urllib.request.urlopen(bad_req, timeout=3)
+    assert exc_info.value.code == 400

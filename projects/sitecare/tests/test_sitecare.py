@@ -56,6 +56,12 @@ def test_sitecare_server_and_git_ci_endpoint(tmp_path) -> None:
             payload = json.loads(r.read().decode("utf-8"))
         assert payload["git_ci"]["ci_configured"] is True
         assert "<urlset" in payload["sitemap_xml"]
+
+        with urllib.request.urlopen(f"http://127.0.0.1:{port}/api/sitemap.xml?base_url=https://example.org", timeout=3) as r_xml:
+            assert r_xml.status == 200
+            assert "application/xml" in r_xml.headers.get("Content-Type", "")
+            xml_body = r_xml.read().decode("utf-8")
+        assert "<loc>https://example.org/</loc>" in xml_body
     finally:
         srv.shutdown()
         srv.server_close()

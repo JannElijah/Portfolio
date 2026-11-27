@@ -57,6 +57,10 @@ def create_server(
                 self._send_json(200, {"emails": emails, "outbox_sent": store.outbox_count()})
                 return
 
+            if parsed.path == "/api/outbox":
+                self._send_json(200, {"outbox": store.list_outbox()})
+                return
+
             self._send_json(404, {"error": "Not found"})
 
         def do_POST(self) -> None:

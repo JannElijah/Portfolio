@@ -53,7 +53,7 @@ def test_document_submission_rbac_approval_and_audit(dms_url: str) -> None:
     )
     assert deny_code == 403
 
-    # DEAN role returns then approves cleanly
+    # DEAN role returns then STAFF resubmits before DEAN approves cleanly
     ret_code, returned = _req(
         f"{dms_url}/api/documents/{doc_id}/transition",
         "PATCH",
@@ -61,6 +61,14 @@ def test_document_submission_rbac_approval_and_audit(dms_url: str) -> None:
     )
     assert ret_code == 200
     assert returned["document"]["status"] == "RETURNED"
+
+    resub_code, resubmitted = _req(
+        f"{dms_url}/api/documents/{doc_id}/transition",
+        "PATCH",
+        {"to_status": "SUBMITTED", "role": "STAFF", "actor": "Jann", "note": "Resubmitted with signature"},
+    )
+    assert resub_code == 200
+    assert resubmitted["document"]["status"] == "SUBMITTED"
 
     # DEAN role approves cleanly
     ok_code, approved = _req(
@@ -70,7 +78,7 @@ def test_document_submission_rbac_approval_and_audit(dms_url: str) -> None:
     )
     assert ok_code == 200
     assert approved["document"]["status"] == "APPROVED"
-    assert len(approved["document"]["audit_trail"]) == 3
+    assert len(approved["document"]["audit_trail"]) == 4
 
     # Department query filter returns scoped rows
     f_code, filtered = _req(f"{dms_url}/api/documents?department=CCS")
