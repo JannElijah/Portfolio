@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { ArrowUpRight, Maximize2, Play } from 'lucide-react';
-import { additionalProjects, featuredProjects } from '../data/portfolioData';
+import { ArrowUpRight, Github, Maximize2, Play } from 'lucide-react';
+import { additionalProjects, featuredProjects, isConfiguredLink } from '../data/portfolioData';
 import LiveDemoModal from './LiveDemoModal';
 import { ProjectDetailsModal, ScreenshotLightboxModal } from './Projects';
 
@@ -133,6 +133,21 @@ export default function SecondaryProjects({ activeCategory = 'all', onResetFilte
                       <ArrowUpRight className="h-3 w-3 text-zinc-400" aria-hidden="true" />
                     </button>
                   )}
+
+                  {(project.links || [])
+                    .filter((l) => isConfiguredLink(l.url))
+                    .map((link) => (
+                      <a
+                        key={link.label}
+                        href={link.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 rounded-md border border-zinc-800 bg-zinc-950 px-2.5 py-1 text-xs font-medium text-zinc-300 hover:border-zinc-600 hover:text-white"
+                      >
+                        <Github className="h-3 w-3" aria-hidden="true" />
+                        <span>{link.label}</span>
+                      </a>
+                    ))}
                 </div>
               </div>
             </article>

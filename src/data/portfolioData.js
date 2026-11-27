@@ -7,6 +7,8 @@
 export const isConfiguredLink = (url) =>
   typeof url === 'string' && url.trim().length > 0 && !url.trim().startsWith('[INSERT_');
 
+const REPO_TREE_BASE = 'https://github.com/JannElijah/Portfolio/tree/main';
+
 export const navItems = [
   { label: 'About', href: '#about' },
   { label: 'Projects', href: '#projects' },
@@ -115,7 +117,7 @@ export const featuredProjects = [
       ],
       cliUsage: 'cd projects/mailpilot && python -m mailpilot.server',
     },
-    links: [],
+    links: [{ label: 'GitHub', url: `${REPO_TREE_BASE}/projects/mailpilot`, kind: 'github' }],
   },
   {
     id: 'sitecare',
@@ -141,7 +143,7 @@ export const featuredProjects = [
       ],
       cliUsage: 'cd projects/sitecare && python -m sitecare.cli audit --site-dir ../../dist',
     },
-    links: [],
+    links: [{ label: 'GitHub', url: `${REPO_TREE_BASE}/projects/sitecare`, kind: 'github' }],
   },
   {
     id: 'netguard-network',
@@ -191,7 +193,7 @@ export const featuredProjects = [
         'Instant QR tag generation and PNG download per product SKU',
       ],
     },
-    links: [{ label: 'GitHub', url: '[INSERT_LINK]', kind: 'github' }],
+    links: [{ label: 'GitHub', url: `${REPO_TREE_BASE}/StockPilot`, kind: 'github' }],
   },
   {
     id: 'stormwatch',
@@ -215,7 +217,7 @@ export const featuredProjects = [
         'Graceful offline telemetry fallback and CSV weather matrix export',
       ],
     },
-    links: [{ label: 'GitHub', url: '[INSERT_LINK]', kind: 'github' }],
+    links: [{ label: 'GitHub', url: `${REPO_TREE_BASE}/StormWatchPH`, kind: 'github' }],
   },
   {
     id: 'cryptosight',
@@ -239,7 +241,7 @@ export const featuredProjects = [
         'Persistent SQLite portfolio tracker with allocation chart and CSV export',
       ],
     },
-    links: [{ label: 'GitHub', url: '[INSERT_LINK]', kind: 'github' }],
+    links: [{ label: 'GitHub', url: `${REPO_TREE_BASE}/CryptoSight`, kind: 'github' }],
   },
   {
     id: 'devchat',
@@ -263,7 +265,7 @@ export const featuredProjects = [
         'Audit mode exposing raw Fernet ciphertext in SQLite alongside decrypted export',
       ],
     },
-    links: [{ label: 'GitHub', url: '[INSERT_LINK]', kind: 'github' }],
+    links: [{ label: 'GitHub', url: `${REPO_TREE_BASE}/DevChat`, kind: 'github' }],
   },
   {
     id: 'studentos',
@@ -287,7 +289,7 @@ export const featuredProjects = [
         'Verified with automated scheduling and reminder integration tests',
       ],
     },
-    links: [{ label: 'GitHub', url: '[INSERT_LINK]', kind: 'github' }],
+    links: [{ label: 'GitHub', url: `${REPO_TREE_BASE}/StudentOS`, kind: 'github' }],
   },
   {
     id: 'mcu-lab',
@@ -312,7 +314,7 @@ export const featuredProjects = [
         'Includes live HTTP web console + interactive browser sandbox via Live Sandbox button',
       ],
     },
-    links: [],
+    links: [{ label: 'GitHub', url: `${REPO_TREE_BASE}/projects/waferbench`, kind: 'github' }],
   },
 ];
 
@@ -338,6 +340,7 @@ export const additionalProjects = [
       ],
       cliUsage: 'cd projects/systriage && python -m systriage.cli scan --export report.json',
     },
+    links: [{ label: 'GitHub', url: `${REPO_TREE_BASE}/projects/systriage`, kind: 'github' }],
   },
   {
     id: 'uphsd-dms',
@@ -361,6 +364,7 @@ export const additionalProjects = [
       ],
       cliUsage: 'cd projects/uphsd-dms && python -m dms.server',
     },
+    links: [{ label: 'GitHub', url: `${REPO_TREE_BASE}/projects/uphsd-dms`, kind: 'github' }],
   },
   {
     id: 'netaudit',
@@ -383,6 +387,7 @@ export const additionalProjects = [
       ],
       cliUsage: 'cd projects/netaudit && python -m netaudit.cli audit sample_router.cfg',
     },
+    links: [{ label: 'GitHub', url: `${REPO_TREE_BASE}/projects/netaudit`, kind: 'github' }],
   },
   {
     id: 'logpulse',
@@ -405,6 +410,7 @@ export const additionalProjects = [
       ],
       cliUsage: 'cd projects/logpulse && python -m logpulse.cli scan --save-db',
     },
+    links: [{ label: 'GitHub', url: `${REPO_TREE_BASE}/projects/logpulse`, kind: 'github' }],
   },
   {
     id: 'authgate',
@@ -427,6 +433,7 @@ export const additionalProjects = [
       ],
       cliUsage: 'cd projects/authgate && python -m pytest -v',
     },
+    links: [{ label: 'GitHub', url: `${REPO_TREE_BASE}/projects/authgate`, kind: 'github' }],
   },
   {
     id: 'qa-pilot',
@@ -451,6 +458,7 @@ export const additionalProjects = [
       ],
       cliUsage: 'cd projects/qa-pilot && python -m pytest -v --junitxml=junit.xml',
     },
+    links: [{ label: 'GitHub', url: `${REPO_TREE_BASE}/projects/qa-pilot`, kind: 'github' }],
   },
   {
     id: 'edgeops',
@@ -475,6 +483,7 @@ export const additionalProjects = [
       ],
       cliUsage: 'cd projects/edgeops && python -m edgeops.gateway',
     },
+    links: [{ label: 'GitHub', url: `${REPO_TREE_BASE}/projects/edgeops`, kind: 'github' }],
   },
   {
     id: 'unity-games',

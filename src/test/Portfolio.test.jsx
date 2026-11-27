@@ -44,6 +44,23 @@ describe('Portfolio data integrity', () => {
       expect(fs.existsSync(fullPath), `Missing certificate asset: ${fullPath}`).toBe(true);
     }
   });
+
+  it('ensures every configured Portfolio GitHub tree link maps to a local folder', () => {
+    const repoPrefix = 'https://github.com/JannElijah/Portfolio/tree/main/';
+    const allProjects = [...featuredProjects, ...additionalProjects];
+    const repoLinks = allProjects
+      .flatMap((p) => p.links || [])
+      .map((l) => l.url)
+      .filter((u) => typeof u === 'string' && u.startsWith(repoPrefix));
+
+    expect(repoLinks.length).toBeGreaterThanOrEqual(15);
+
+    for (const url of repoLinks) {
+      const relPath = url.slice(repoPrefix.length);
+      const fullPath = path.join(process.cwd(), relPath);
+      expect(fs.existsSync(fullPath), `Missing repo folder for link ${url}: ${fullPath}`).toBe(true);
+    }
+  });
 });
 
 describe('Portfolio UI & interactive workflows', () => {
