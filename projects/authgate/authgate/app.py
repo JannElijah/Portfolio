@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import os
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
 from typing import Any
 
 from authgate.security import (
@@ -15,6 +16,8 @@ from authgate.security import (
     verify_password,
 )
 from authgate.store import AuthStore
+
+STATIC_HTML = Path(__file__).parent / "static" / "index.html"
 
 
 class AuthGateContext:
@@ -79,6 +82,19 @@ def create_server(host: str = "127.0.0.1", port: int = 8080, context: AuthGateCo
             return claims
 
         def do_GET(self) -> None:
+            if self.path in {"/", "/index.html"} and STATIC_HTML.exists():
+                html_bytes = STATIC_HTML.read_bytes()
+                self.send_response(200)
+                self.send_header("Content-Type", "text/html; charset=utf-8")
+                self.send_header("Content-Length", str(len(html_bytes)))
+                self.end_headers()
+                self.wfile.write(html_bytes)
+                return
+
+            if self.path == "/api/health":
+                self._send_json(200, {"status": "ok", "service": "authgate"})
+                return
+
             if self.path == "/api/me":
                 claims = self._authenticate()
                 if not claims:

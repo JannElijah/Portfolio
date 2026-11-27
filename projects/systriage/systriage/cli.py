@@ -6,7 +6,7 @@ import argparse
 import json
 from pathlib import Path
 
-from systriage.diagnostics import ProbeTarget, run_endpoint_diagnostic, suggest_ticket_priority
+from systriage.diagnostics import ProbeTarget, render_triage_html, run_endpoint_diagnostic, suggest_ticket_priority
 from systriage.storage import TriageStore
 
 
@@ -40,8 +40,9 @@ def build_parser() -> argparse.ArgumentParser:
     resolve_t.add_argument("--id", type=int, required=True)
     resolve_t.add_argument("--notes", required=True)
 
-    export_cmd = sub.add_parser("export", help="Export diagnostic + ticket bundle to JSON")
+    export_cmd = sub.add_parser("export", help="Export diagnostic + ticket bundle to JSON and optional HTML")
     export_cmd.add_argument("--out", default="systriage_report.json")
+    export_cmd.add_argument("--html", default=None)
     return parser
 
 
@@ -103,6 +104,8 @@ def main(argv: list[str] | None = None) -> int:
             "tickets": store.list_tickets(),
         }
         Path(args.out).write_text(json.dumps(payload, indent=2), encoding="utf-8")
+        if getattr(args, "html", None):
+            Path(args.html).write_text(render_triage_html(payload["latest_diagnostic"], payload["tickets"]), encoding="utf-8")
         print(f"Exported SysTriage report to {args.out}")
         return 0
 

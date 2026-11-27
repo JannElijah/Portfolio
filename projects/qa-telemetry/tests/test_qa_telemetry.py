@@ -6,6 +6,7 @@ import json
 
 from qa_telemetry.analytics import (
     compute_run_summary,
+    compute_suite_trend,
     detect_flaky_tests,
     detect_regressions,
     evaluate_release_gate,
@@ -65,6 +66,14 @@ def test_flaky_and_regression_detection_across_runs(tmp_path) -> None:
     assert len(flaky) == 1
     assert flaky[0]["test_id"] == "tests.test_auth::test_token_refresh"
     assert flaky[0]["flake_rate_percent"] == 50.0
+
+    trend = compute_suite_trend(store, suite_name="api-regression")
+    assert [p["build_ref"] for p in trend] == ["b1", "b2"]
+    assert trend[0]["pass_rate_percent"] == 100.0
+    assert trend[1]["pass_rate_percent"] == 66.67
+
+    trend_html = render_html_signoff_report(store, run2)
+    assert "Suite Pass-Rate Trend" in trend_html and "Flaky Tests Breakdown" in trend_html
 
 
 def test_release_gate_and_html_signoff_export(tmp_path) -> None:

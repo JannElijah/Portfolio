@@ -28,6 +28,7 @@ def test_junit_to_html_signoff_report(tmp_path: Path) -> None:
     content = html_out.read_text(encoding="utf-8")
     assert "GATE: PASS" in content
     assert "test_e2e_approve" in content
+    assert "<svg" in content and "250ms" in content and "filterRows" in content
 
     run_id = ingest_cases_to_qa_telemetry("dms-e2e", "fw-test-1", rows, tmp_path / "tel.db")
     assert run_id >= 1

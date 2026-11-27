@@ -8,7 +8,9 @@ import json
 import pytest
 
 from winops.auditor import (
+    build_remediation_steps,
     collect_workstation_audit,
+    compute_compliance_score,
     evaluate_compliance_checks,
     export_audit_csv,
     render_audit_html,
@@ -56,6 +58,9 @@ def test_compliance_flags_missing_serial_and_disabled_firewall() -> None:
     }
     checks = evaluate_compliance_checks(sample)
     assert not any(item["passed"] for item in checks)
+    assert compute_compliance_score(checks) == 0
+    steps = build_remediation_steps(checks)
+    assert len(steps) == 3 and any("Set-NetFirewallProfile" in s for s in steps)
 
 
 def test_cli_audit_exports_json_csv_and_html(tmp_path, capsys) -> None:
@@ -66,7 +71,9 @@ def test_cli_audit_exports_json_csv_and_html(tmp_path, capsys) -> None:
     payload = json.loads(capsys.readouterr().out)
     assert payload["storage"]["total_gb"] > 0
     assert html_path.exists()
-    assert "WinOps Workstation Audit" in render_audit_html(payload)
+    html_out = render_audit_html(payload)
+    assert "WinOps Workstation Audit" in html_out
+    assert "<svg" in html_out and "Remediation Checklist" in html_out
 
     with csv_path.open("r", encoding="utf-8") as fh:
         rows = list(csv.DictReader(fh))

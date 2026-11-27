@@ -49,4 +49,6 @@ def test_storage_and_cli_analyze_json(tmp_path, capsys) -> None:
 
     store = PulseStore(db_file)
     assert len(store.list_scans()) == 1
-    assert "LogPulse Host Triage (CRITICAL)" in render_pulse_html(out)
+    html_report = render_pulse_html(out)
+    assert "LogPulse Host Triage (CRITICAL)" in html_report
+    assert "<svg" in html_report and "Event ID Frequency Chart" in html_report

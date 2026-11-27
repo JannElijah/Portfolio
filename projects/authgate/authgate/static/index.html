@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AuthGate — RBAC &amp; JWT Explorer Console</title>
+  <style>
+    :root { --bg:#080d0b; --panel:#101915; --panel-2:#0b120f; --border:#1f332b; --emerald:#10b981; --cyan:#2dd4bf; --warn:#f59e0b; --bad:#f43f5e; --text:#f4f4f5; --muted:#94a3b8; }
+    * { box-sizing:border-box; font-family:Inter,system-ui,sans-serif; }
+    body { margin:0; background:radial-gradient(960px 420px at 85% -10%, rgba(16,185,129,0.11), transparent), var(--bg); color:var(--text); padding:22px 28px; }
+    .top { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; border-bottom:1px solid var(--border); padding-bottom:12px; margin-bottom:16px; }
+    h1 { margin:0; font-size:1.3rem; }
+    .sub { color:var(--muted); font-size:0.8rem; margin-top:2px; }
+    .grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+    .panel { background:var(--panel); border:1px solid var(--border); border-radius:10px; padding:15px; min-width:0; }
+    .panel h2 { margin:0 0 10px; font-size:0.95rem; }
+    label { display:block; font-size:0.72rem; color:var(--muted); margin:8px 0 3px; text-transform:uppercase; }
+    input, select { width:100%; background:#070c0a; border:1px solid var(--border); color:var(--text); padding:7px 10px; border-radius:6px; font-size:0.8rem; }
+    .btns { display:flex; gap:7px; flex-wrap:wrap; margin-top:10px; }
+    button { background:var(--emerald); color:#022c22; border:0; padding:7px 12px; border-radius:6px; font-weight:700; font-size:0.76rem; cursor:pointer; }
+    button.sec { background:var(--panel-2); border:1px solid var(--border); color:var(--cyan); font-weight:600; }
+    pre { margin:8px 0 0; padding:10px; max-height:220px; overflow:auto; background:#070c0a; border:1px solid var(--border); border-radius:7px; font-size:0.73rem; color:#a7f3d0; white-space:pre-wrap; word-break:break-word; }
+    .pill { display:inline-block; padding:2px 8px; border-radius:999px; font-family:monospace; font-size:0.7rem; font-weight:700; background:rgba(16,185,129,0.16); color:#34d399; }
+    @media (max-width: 900px) { .grid { grid-template-columns:1fr; } }
+  </style>
+</head>
+<body>
+  <div class="top">
+    <div>
+      <h1>AuthGate — Zero-Dependency RBAC &amp; JWT Console</h1>
+      <div class="sub">PBKDF2-SHA256 Hashing · Single-Use Refresh Rotation · Sliding-Window Rate Limiter · Immutable Audit Log</div>
+    </div>
+    <span id="healthPill" class="pill">CHECKING...</span>
+  </div>
+
+  <div class="grid">
+    <div class="panel">
+      <h2>Identity &amp; Token Controls</h2>
+      <label>Username</label>
+      <input id="userInp" value="admin_demo" />
+      <label>Password</label>
+      <input id="passInp" type="password" value="StrongPass123!" />
+      <label>Role (Registration)</label>
+      <select id="roleSel"><option value="ADMIN">ADMIN</option><option value="TECHNICIAN">TECHNICIAN</option><option value="STAFF">STAFF</option></select>
+      <div class="btns">
+        <button class="sec" onclick="registerUser()">Register</button>
+        <button onclick="loginUser()">Login (Issue JWT)</button>
+        <button class="sec" onclick="refreshJwt()">Rotate Refresh</button>
+        <button class="sec" onclick="callMe()">GET /api/me</button>
+        <button class="sec" onclick="callAudit()">GET /api/audit-logs</button>
+        <button class="sec" style="color:#fda4af;" onclick="logoutUser()">Logout</button>
+      </div>
+      <label style="margin-top:14px;">Decoded Access JWT Claims</label>
+      <pre id="claimsBox">No active session token yet.</pre>
+    </div>
+
+    <div class="panel">
+      <h2>Live HTTP Response &amp; Audit Output</h2>
+      <div id="respMeta" style="font-family:monospace;font-size:0.76rem;color:var(--cyan);">Ready</div>
+      <pre id="respBox" style="max-height:330px;">Click Register → Login to inspect JWT rotation and RBAC enforcement.</pre>
+    </div>
+  </div>
+
+<script>
+const esc = (s) => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+let accessToken = '';
+let refreshToken = '';
+
+function showClaims(tok) {
+  if (!tok || tok.split('.').length < 2) {
+    document.getElementById('claimsBox').textContent = 'No active session token.';
+    return;
+  }
+  try {
+    const b64 = tok.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+    const jsonStr = atob(b64);
+    document.getElementById('claimsBox').textContent = JSON.stringify(JSON.parse(jsonStr), null, 2);
+  } catch {
+    document.getElementById('claimsBox').textContent = 'Unable to decode token payload.';
+  }
+}
+
+async function api(path, method = 'GET', body = null, useToken = false) {
+  const headers = {'Content-Type':'application/json'};
+  if (useToken && accessToken) headers['Authorization'] = 'Bearer ' + accessToken;
+  const res = await fetch(path, { method, headers, body: body ? JSON.stringify(body) : null });
+  const data = await res.json();
+  document.getElementById('respMeta').textContent = `${method} ${path} → HTTP ${res.status}`;
+  document.getElementById('respMeta').style.color = res.ok ? '#34d399' : '#fb7185';
+  document.getElementById('respBox').textContent = JSON.stringify(data, null, 2);
+  return { res, data };
+}
+
+async function registerUser() {
+  await api('/api/auth/register', 'POST', {
+    username: document.getElementById('userInp').value,
+    password: document.getElementById('passInp').value,
+    role: document.getElementById('roleSel').value,
+  });
+}
+
+async function loginUser() {
+  const { res, data } = await api('/api/auth/login', 'POST', {
+    username: document.getElementById('userInp').value,
+    password: document.getElementById('passInp').value,
+  });
+  if (res.ok && data.access_token) {
+    accessToken = data.access_token;
+    refreshToken = data.refresh_token || '';
+    showClaims(accessToken);
+  }
+}
+
+async function refreshJwt() {
+  const { res, data } = await api('/api/auth/refresh', 'POST', { refresh_token: refreshToken });
+  if (res.ok && data.access_token) {
+    accessToken = data.access_token;
+    refreshToken = data.refresh_token || '';
+    showClaims(accessToken);
+  }
+}
+
+async function callMe() { await api('/api/me', 'GET', null, true); }
+async function callAudit() { await api('/api/audit-logs', 'GET', null, true); }
+async function logoutUser() {
+  await api('/api/auth/logout', 'POST', { refresh_token: refreshToken });
+  accessToken = '';
+  refreshToken = '';
+  showClaims('');
+}
+
+fetch('/api/health').then(r => r.json()).then(d => {
+  document.getElementById('healthPill').textContent = `${d.service.toUpperCase()} · ${d.status.toUpperCase()}`;
+});
+</script>
+</body>
+</html>

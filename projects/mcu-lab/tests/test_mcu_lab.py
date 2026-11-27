@@ -59,6 +59,12 @@ def test_bench_lot_yield_and_csv_export(tmp_path) -> None:
         rows = list(csv.DictReader(fh))
     assert len(rows) == 8
 
+    pareto = store.compute_fault_pareto(lot_id)
+    assert set(["VDD_3V3", "VCC_5V", "MCU_TEMP_C", "I_DRAW_MA"]).issubset(pareto.keys())
+    lot_html = store.render_lot_html_report(lot_id)
+    assert "MCU-Lab Semiconductor Bench Report — LOT-TEST-01" in lot_html
+    assert "<svg" in lot_html and "Channel Fault Pareto" in lot_html
+
 
 def test_cli_simulate_and_export(tmp_path, capsys) -> None:
     db_file = tmp_path / "cli_mcu.db"

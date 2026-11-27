@@ -7,7 +7,7 @@ import json
 import pytest
 
 from netaudit.cli import main
-from netaudit.parser import audit_parsed_config, parse_ios_config
+from netaudit.parser import audit_parsed_config, generate_ios_remediation_cli, parse_ios_config
 from netaudit.subnetting import allocate_vlsm_subnets, describe_cidr
 
 SECURE_IOS = """
@@ -60,6 +60,9 @@ def test_audit_flags_telnet_and_missing_secrets() -> None:
     severities = {f["rule"]: f["severity"] for f in audit["findings"]}
     assert severities["Enable Secret Configured"] == "FAIL"
     assert severities["SSH-Only VTY Management"] == "FAIL"
+    assert severities["SSHv2 Enforced"] == "WARN"
+    rems = generate_ios_remediation_cli(audit)
+    assert "ip ssh version 2" in rems and "enable secret <strong-secret>" in rems
 
 
 def test_cidr_and_vlsm_allocation() -> None:
@@ -84,7 +87,9 @@ def test_cli_audit_and_vlsm(tmp_path, capsys) -> None:
     assert main(["audit-config", "--file", str(cfg), "--html", str(html_out)]) == 0
     out = json.loads(capsys.readouterr().out)
     assert out["audit"]["overall_status"] == "PASS"
-    assert "NetAudit IOS Security Report — HQ-CORE-R1 (PASS)" in html_out.read_text(encoding="utf-8")
+    html_text = html_out.read_text(encoding="utf-8")
+    assert "NetAudit IOS Security Report — HQ-CORE-R1 (PASS)" in html_text
+    assert "Cisco IOS Hardening Remediation CLI" in html_text
 
     assert main(["vlsm", "--parent", "172.16.0.0/24", "--req", "Voice:25", "--req", "Data:60"]) == 0
     vlsm_out = json.loads(capsys.readouterr().out)

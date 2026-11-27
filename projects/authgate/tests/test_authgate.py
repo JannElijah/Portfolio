@@ -60,6 +60,13 @@ def test_pbkdf2_and_jwt_tamper_detection() -> None:
 def test_rbac_enforcement_audit_logs_and_token_rotation(auth_server) -> None:
     base_url, _ = auth_server
 
+    with urllib.request.urlopen(f"{base_url}/", timeout=3) as ui_resp:
+        assert ui_resp.status == 200
+        assert "AuthGate" in ui_resp.read().decode("utf-8")
+
+    h_code, h_data = _request(f"{base_url}/api/health")
+    assert h_code == 200 and h_data == {"status": "ok", "service": "authgate"}
+
     # Register STAFF and ADMIN users
     s_code, staff = _request(
         f"{base_url}/api/auth/register",

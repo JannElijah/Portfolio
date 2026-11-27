@@ -89,7 +89,10 @@ def test_cli_scan_and_export(tmp_path, capsys) -> None:
     assert "snapshot_id" in captured
     assert captured["diagnostic"]["disk"]["total_gb"] > 0
 
-    assert main(["--db", str(db_file), "export", "--out", str(out_file)]) == 0
+    html_file = tmp_path / "report.html"
+    assert main(["--db", str(db_file), "export", "--out", str(out_file), "--html", str(html_file)]) == 0
     exported = json.loads(out_file.read_text(encoding="utf-8"))
     assert "latest_diagnostic" in exported
     assert "tickets" in exported
+    html_text = html_file.read_text(encoding="utf-8")
+    assert "SysTriage Diagnostics" in html_text and "P1–P3 Helpdesk Triage Ledger" in html_text

@@ -125,6 +125,14 @@ def audit_parsed_config(parsed: dict) -> dict:
             "detail": "VTY restricted to SSH" if not telnet_exposed else f"Telnet/unrestricted VTY transport ({sorted(transports) or 'default'})",
         }
     )
+    ssh_v2 = str(sec.get("ssh_version") or "") == "2"
+    findings.append(
+        {
+            "rule": "SSHv2 Enforced",
+            "severity": "PASS" if ssh_v2 else "WARN",
+            "detail": "ip ssh version 2 configured" if ssh_v2 else f"SSH version is {sec.get('ssh_version') or 'unset'}; recommend SSHv2",
+        }
+    )
 
     valid_ips = 0
     for iface in parsed["interfaces"]:
@@ -145,17 +153,77 @@ def audit_parsed_config(parsed: dict) -> dict:
     }
 
 
+def generate_ios_remediation_cli(audit: dict) -> list[str]:
+    """Generate Cisco IOS hardening commands for non-passing findings in audit."""
+    cmds: list[str] = []
+    for f in audit.get("findings", []):
+        if f.get("severity") == "PASS":
+            continue
+        rule = f.get("rule", "")
+        if rule == "Encrypted Service Passwords":
+            cmds.append("service password-encryption")
+        elif rule == "Enable Secret Configured":
+            cmds.append("enable secret <strong-secret>")
+        elif rule == "SSH-Only VTY Management":
+            cmds.extend(["line vty 0 4", " transport input ssh"])
+        elif rule == "SSHv2 Enforced":
+            cmds.append("ip ssh version 2")
+    return cmds
+
+
 def render_netaudit_html(parsed: dict, audit: dict) -> str:
-    """Render a standalone dark-themed HTML Cisco IOS security audit report."""
+    """Render a standalone dark-themed HTML Cisco IOS security & topology audit report."""
+    status = str(audit["overall_status"])
+    st_col = "#10b981" if status == "PASS" else "#f59e0b" if status == "WARN" else "#f43f5e"
     rows = "".join(
-        f"<tr><td>{html.escape(f['rule'])}</td><td>{html.escape(f['severity'])}</td><td>{html.escape(f['detail'])}</td></tr>"
+        f"<tr><td>{html.escape(f['rule'])}</td>"
+        f"<td><span class='pill {html.escape(f['severity'].lower())}'>{html.escape(f['severity'])}</span></td>"
+        f"<td>{html.escape(f['detail'])}</td></tr>"
         for f in audit["findings"]
     )
-    return (
-        "<!doctype html><html lang='en'><head><meta charset='utf-8' /><title>NetAudit Report</title></head>"
-        "<body style='font-family:system-ui,sans-serif;background:#09090b;color:#f4f4f5;padding:2rem;'>"
-        f"<h1>NetAudit IOS Security Report — {html.escape(audit['hostname'])} ({html.escape(audit['overall_status'])})</h1>"
-        f"<p>L3 Interfaces: {audit['configured_l3_interfaces']} | VLANs: {audit['vlan_count']} | OSPF Networks: {audit['ospf_network_count']}</p>"
-        f"<table border='1' cellpadding='6' cellspacing='0'><thead><tr><th>Check</th><th>Severity</th><th>Detail</th></tr></thead><tbody>{rows}</tbody></table>"
-        "</body></html>"
-    )
+    iface_rows = "".join(
+        f"<tr><td class='mono'>{html.escape(i['name'])}</td><td class='mono'>{html.escape(str(i.get('ip') or '-'))}</td>"
+        f"<td class='mono'>{html.escape(str(i.get('mask') or '-'))}</td><td>{html.escape(str(i.get('description') or ''))}</td></tr>"
+        for i in parsed.get("interfaces", [])
+    ) or "<tr><td colspan='4'>None</td></tr>"
+    rem_cli = "\n".join(generate_ios_remediation_cli(audit)) or "! No hardening remediation commands required."
+
+    return f"""<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>NetAudit Report — {html.escape(audit['hostname'])}</title>
+  <style>
+    body {{ margin:0; font-family:Inter,system-ui,sans-serif; background:#080c14; color:#f4f4f5; padding:26px 34px; }}
+    .hdr {{ display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #1e293b; padding-bottom:12px; margin-bottom:16px; }}
+    .kpis {{ display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:16px; }}
+    .kpi {{ background:#0f1624; border:1px solid #1e293b; border-radius:8px; padding:12px 14px; }}
+    .lbl {{ font-size:0.68rem; color:#94a3b8; text-transform:uppercase; }}
+    .val {{ font-size:1.3rem; font-weight:700; font-family:monospace; margin-top:4px; }}
+    .card {{ background:#0f1624; border:1px solid #1e293b; border-radius:10px; padding:15px; margin-bottom:14px; }}
+    table {{ width:100%; border-collapse:collapse; font-size:0.82rem; }}
+    th, td {{ border-bottom:1px solid #1e293b; padding:8px; text-align:left; }}
+    .mono {{ font-family:ui-monospace,monospace; }}
+    .pill {{ padding:2px 8px; border-radius:999px; font-family:monospace; font-size:0.72rem; font-weight:700; }}
+    .pass {{ background:rgba(16,185,129,0.16); color:#34d399; }}
+    .warn {{ background:rgba(245,158,11,0.16); color:#fbbf24; }}
+    .fail {{ background:rgba(244,63,94,0.16); color:#fb7185; }}
+    pre {{ margin:0; padding:10px; background:#06090f; border:1px solid #1e293b; border-radius:6px; font-size:0.78rem; color:#7dd3fc; }}
+  </style>
+</head>
+<body>
+  <div class="hdr">
+    <h1 style="margin:0;font-size:1.3rem;">NetAudit IOS Security Report — {html.escape(audit['hostname'])} ({html.escape(status)})</h1>
+    <span class="pill" style="color:{st_col};border:1px solid {st_col};">{html.escape(status)}</span>
+  </div>
+  <div class="kpis">
+    <div class="kpi"><div class="lbl">Audit Status</div><div class="val" style="color:{st_col};">{html.escape(status)}</div></div>
+    <div class="kpi"><div class="lbl">L3 Interfaces</div><div class="val">{audit['configured_l3_interfaces']}</div></div>
+    <div class="kpi"><div class="lbl">VLANs</div><div class="val">{audit['vlan_count']}</div></div>
+    <div class="kpi"><div class="lbl">OSPF Networks</div><div class="val">{audit['ospf_network_count']}</div></div>
+  </div>
+  <div class="card"><h2 style="margin:0 0 8px;font-size:0.95rem;">Security Hygiene Findings</h2><table><thead><tr><th>Check</th><th>Severity</th><th>Detail</th></tr></thead><tbody>{rows}</tbody></table></div>
+  <div class="card"><h2 style="margin:0 0 8px;font-size:0.95rem;">Parsed Interfaces</h2><table><thead><tr><th>Interface</th><th>IP Address</th><th>Subnet Mask</th><th>Description</th></tr></thead><tbody>{iface_rows}</tbody></table></div>
+  <div class="card"><h2 style="margin:0 0 8px;font-size:0.95rem;">Cisco IOS Hardening Remediation CLI</h2><pre>{html.escape(rem_cli)}</pre></div>
+</body>
+</html>"""

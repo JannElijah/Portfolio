@@ -160,24 +160,110 @@ def export_audit_csv(records: list[dict], out_path: str | Path) -> Path:
     return target
 
 
+def compute_compliance_score(checks: list[dict]) -> int:
+    """Return integer 0-100 percentage of compliance checks passing."""
+    if not checks:
+        return 0
+    return round(sum(1 for c in checks if c.get("passed")) / len(checks) * 100)
+
+
+def build_remediation_steps(checks: list[dict]) -> list[str]:
+    """Map failing compliance checks to concrete PowerShell/IT remediation commands."""
+    steps: list[str] = []
+    for chk in checks:
+        if chk.get("passed"):
+            continue
+        name = chk.get("check", "")
+        if "Disk" in name:
+            steps.append("Run Storage Sense / clean Windows Update cache: cleanmgr /sagerun:1")
+        elif "Firewall" in name:
+            steps.append("Enable all firewall profiles: Set-NetFirewallProfile -Profile Domain,Public,Private -Enabled True")
+        elif "Serial" in name:
+            steps.append("Record BIOS asset tag via CIM: (Get-CimInstance Win32_BIOS).SerialNumber")
+        else:
+            steps.append(f"Inspect and resolve failing check: {name}")
+    return steps
+
+
 def render_audit_html(record: dict) -> str:
-    """Render an executive HTML compliance & hardware asset sheet."""
+    """Render an executive dark-mode HTML compliance & hardware asset sheet with SVG gauge."""
+    checks = record["compliance_checks"]
+    score = compute_compliance_score(checks)
+    remediations = build_remediation_steps(checks)
+    free_pct = float(record["storage"]["free_percent"])
+    used_pct = max(0.0, min(100.0, round(100.0 - free_pct, 1)))
+    ring_r = 26
+    ring_c = round(2 * 3.14159 * ring_r, 1)
+    ring_dash = round((score / 100.0) * ring_c, 1)
+    ring_col = "#10b981" if score == 100 else "#f59e0b" if score >= 60 else "#f43f5e"
+
     rows = "\n".join(
         f"<tr><td>{html.escape(c['check'])}</td>"
-        f"<td>{'PASS' if c['passed'] else 'FAIL'}</td>"
-        f"<td>{html.escape(c['observed'])}</td></tr>"
-        for c in record["compliance_checks"]
+        f"<td><span class='pill {'ok' if c['passed'] else 'bad'}'>{'PASS' if c['passed'] else 'FAIL'}</span></td>"
+        f"<td class='mono'>{html.escape(c['observed'])}</td></tr>"
+        for c in checks
     )
+    rem_html = (
+        "".join(f"<li><code>{html.escape(s)}</code></li>" for s in remediations)
+        or "<li class='muted'>All compliance baselines satisfied — no remediation required.</li>"
+    )
+    ram_val = f"{record.get('total_ram_gb')} GB" if record.get("total_ram_gb") else "Offline"
+
     return f"""<!doctype html>
 <html lang="en">
-<head><meta charset="utf-8" /><title>WinOps Asset Audit — {html.escape(record['hostname'])}</title></head>
-<body style="font-family:system-ui,sans-serif;background:#0f172a;color:#f8fafc;padding:2rem;">
-  <h1>WinOps Workstation Audit: {html.escape(record['hostname'])}</h1>
-  <p>Model: {html.escape(str(record['manufacturer']))} {html.escape(str(record['model']))} | Serial: <code>{html.escape(str(record['serial_number']))}</code></p>
-  <p>OS: {html.escape(str(record['os']))} (Build {html.escape(str(record['os_build']))}) | Free Disk: {record['storage']['free_gb']} GB ({record['storage']['free_percent']}%)</p>
-  <table border="1" cellpadding="8" cellspacing="0" style="border-collapse:collapse;border-color:#334155;">
-    <thead><tr><th>Compliance Check</th><th>Status</th><th>Observed</th></tr></thead>
-    <tbody>{rows}</tbody>
-  </table>
+<head>
+  <meta charset="utf-8" />
+  <title>WinOps Asset Audit — {html.escape(record['hostname'])}</title>
+  <style>
+    body {{ margin:0; font-family:Inter,system-ui,sans-serif; background:#090d16; color:#f4f4f5; padding:26px 34px; }}
+    .hdr {{ display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #1e293b; padding-bottom:14px; margin-bottom:18px; }}
+    h1 {{ margin:0; font-size:1.3rem; }}
+    .sub {{ color:#94a3b8; font-size:0.82rem; margin-top:4px; }}
+    .kpis {{ display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:18px; }}
+    .kpi {{ background:#111827; border:1px solid #1e293b; border-radius:10px; padding:12px 14px; }}
+    .lbl {{ font-size:0.68rem; color:#94a3b8; text-transform:uppercase; letter-spacing:0.06em; }}
+    .val {{ font-size:1.25rem; font-weight:700; margin-top:4px; font-family:ui-monospace,monospace; }}
+    .card {{ background:#111827; border:1px solid #1e293b; border-radius:10px; padding:16px; margin-bottom:14px; }}
+    .bar-bg {{ height:8px; background:#1e293b; border-radius:999px; overflow:hidden; margin-top:8px; }}
+    .bar-fill {{ height:100%; background:#38bdf8; width:{used_pct}%; }}
+    table {{ width:100%; border-collapse:collapse; font-size:0.84rem; }}
+    th, td {{ border-bottom:1px solid #1e293b; padding:9px 8px; text-align:left; }}
+    th {{ font-size:0.72rem; color:#94a3b8; text-transform:uppercase; }}
+    .mono {{ font-family:ui-monospace,monospace; font-size:0.8rem; color:#cbd5e1; }}
+    .pill {{ padding:2px 8px; border-radius:999px; font-family:monospace; font-size:0.72rem; font-weight:700; }}
+    .ok {{ background:rgba(16,185,129,0.16); color:#34d399; }}
+    .bad {{ background:rgba(244,63,94,0.16); color:#fb7185; }}
+    .muted {{ color:#94a3b8; }}
+  </style>
+</head>
+<body>
+  <div class="hdr">
+    <div>
+      <h1>WinOps Workstation Audit: {html.escape(record['hostname'])}</h1>
+      <div class="sub">Model: {html.escape(str(record['manufacturer']))} {html.escape(str(record['model']))} · Serial: <code>{html.escape(str(record['serial_number']))}</code></div>
+    </div>
+    <svg width="68" height="68" viewBox="0 0 68 68" aria-label="Compliance score">
+      <circle cx="34" cy="34" r="{ring_r}" fill="none" stroke="#1e293b" stroke-width="6" />
+      <circle cx="34" cy="34" r="{ring_r}" fill="none" stroke="{ring_col}" stroke-width="6" stroke-dasharray="{ring_dash} {ring_c}" stroke-linecap="round" transform="rotate(-90 34 34)" />
+      <text x="34" y="38" text-anchor="middle" fill="#f8fafc" font-size="13" font-family="monospace" font-weight="700">{score}%</text>
+    </svg>
+  </div>
+  <div class="kpis">
+    <div class="kpi"><div class="lbl">Compliance Score</div><div class="val" style="color:{ring_col};">{score}%</div></div>
+    <div class="kpi"><div class="lbl">Operating System</div><div class="val" style="font-size:0.95rem;">{html.escape(str(record['os']))}</div></div>
+    <div class="kpi"><div class="lbl">Memory</div><div class="val">{html.escape(ram_val)}</div></div>
+    <div class="kpi"><div class="lbl">Free Storage</div><div class="val">{record['storage']['free_gb']} GB ({free_pct}%)</div><div class="bar-bg"><div class="bar-fill"></div></div></div>
+  </div>
+  <div class="card">
+    <h2 style="margin:0 0 10px;font-size:0.95rem;">Workstation Compliance Matrix</h2>
+    <table>
+      <thead><tr><th>Compliance Check</th><th>Status</th><th>Observed</th></tr></thead>
+      <tbody>{rows}</tbody>
+    </table>
+  </div>
+  <div class="card">
+    <h2 style="margin:0 0 8px;font-size:0.95rem;">Remediation Checklist</h2>
+    <ul style="margin:0 0 0 18px;line-height:1.6;">{rem_html}</ul>
+  </div>
 </body>
 </html>"""
